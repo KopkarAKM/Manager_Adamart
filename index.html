@@ -81,13 +81,13 @@
         <!-- Dashboard Content -->
         <div id="dashboardContent" class="hidden space-y-6">
             <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div class="bg-gradient-to-r from-green-400 to-green-600 text-white p-6 rounded-xl card-shadow">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-green-100 text-sm">Total Pendapatan</p>
                             <p id="totalRevenue" class="text-2xl font-bold">Rp 0</p>
-                            <p id="revenueGrowth" class="text-xs text-green-100">+0% dari kemarin</p>
+                            <p id="revenueGrowth" class="text-xs text-green-100">data hari ini</p>
                         </div>
                         <div class="text-3xl">💰</div>
                     </div>
@@ -98,7 +98,7 @@
                         <div>
                             <p class="text-blue-100 text-sm">Total Transaksi</p>
                             <p id="totalTransactions" class="text-2xl font-bold">0</p>
-                            <p id="transactionGrowth" class="text-xs text-blue-100">+0 transaksi hari ini</p>
+                            <p id="transactionGrowth" class="text-xs text-blue-100">data hari ini</p>
                         </div>
                         <div class="text-3xl">📊</div>
                     </div>
@@ -140,7 +140,7 @@
                         </select>
                         <select id="dateFilter" onchange="applyFilters()" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500">
                             <option value="today">Hari Ini</option>
-                            <option value="week">Minggu Ini</option>
+                            <option value="week">7 Hari Terakhir</option>
                             <option value="month">Bulan Ini</option>
                             <option value="all">Semua Waktu</option>
                         </select>
@@ -277,7 +277,7 @@
                 <div class="flex justify-between items-center mt-4">
                     <p class="text-sm text-gray-600">Menampilkan <span id="transactionCount">0</span> transaksi</p>
                     <div class="flex space-x-2">
-                        <button onclick="loadMoreTransactions()" class="text-adamart-600 hover:text-adamart-700 text-sm">Muat Lebih Banyak</button>
+                        <button onclick="alert('Fitur ini akan diimplementasikan di masa mendatang.')" class="text-adamart-600 hover:text-adamart-700 text-sm">Muat Lebih Banyak</button>
                     </div>
                 </div>
             </div>
@@ -390,10 +390,7 @@
             reports: []
         };
 
-        let filteredData = {
-            sales: [],
-            products: []
-        };
+        let filteredSales = [];
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -407,42 +404,26 @@
                 showLoading(true);
                 
                 const response = await fetch(`${APPS_SCRIPT_URL}?action=get_manager_data`);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const data = await response.json();
                 
                 if (data.success) {
                     allData = data;
                     applyFilters(); // Apply initial filters
                 } else {
-                    throw new Error(data.error || 'Failed to load data');
+                    throw new Error(data.error || 'Gagal memuat data dari skrip');
                 }
-                
-                showLoading(false);
-                
             } catch (error) {
                 console.error('Error loading data:', error);
-                alert('Gagal memuat data dari server. Memuat data demo.');
-                loadDemoData();
+                alert(`Gagal memuat data dari server: ${error.message}. Silakan muat ulang halaman.`);
+                // Show empty dashboard on failure
+                allData = { products: [], sales: [], reports: [] };
+                applyFilters();
+            } finally {
                 showLoading(false);
             }
-        }
-
-        function loadDemoData() {
-            allData = {
-                products: [
-                    {barcode: '001', name: 'Indomie Goreng', price: 3500, stock_73: 50, stock_induksi: 30, stock_kelanis: 25},
-                    {barcode: '002', name: 'Aqua 600ml', price: 3000, stock_73: 8, stock_induksi: 35, stock_kelanis: 20},
-                    {barcode: '003', name: 'Teh Botol Sosro', price: 4500, stock_73: 25, stock_induksi: 5, stock_kelanis: 15},
-                ],
-                sales: [
-                    {timestamp: new Date().toISOString(), area: 'adamart 73', total: 15000, method: 'Tunai', items: 'Indomie Goreng x2, Aqua 600ml x3'},
-                    {timestamp: new Date(Date.now() - 86400000).toISOString(), area: 'adamart induksi', total: 9000, method: 'QRIS', items: 'Teh Botol Sosro x2'},
-                ],
-                reports: [
-                    {timestamp: new Date().toISOString(), barcode: '001', name: 'Indomie Goreng', quantity: 2, reason: 'Expired', area: 'adamart 73'},
-                ]
-            };
-            
-            applyFilters();
         }
 
         function applyFilters() {
@@ -472,7 +453,7 @@
                 tempSales = tempSales.filter(sale => sale.area === selectedArea);
             }
             
-            filteredData.sales = tempSales;
+            filteredSales = tempSales;
             updateDashboard();
         }
 
@@ -488,27 +469,29 @@
         }
 
         function updateSummaryCards() {
-            const totalRevenue = filteredData.sales.reduce((sum, sale) => sum + sale.total, 0);
-            const totalTransactions = filteredData.sales.length;
+            const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
+            const totalTransactions = filteredSales.length;
             
             const productSales = {};
-            filteredData.sales.forEach(sale => {
-                sale.items.split(',').forEach(itemDetail => {
-                    const parts = itemDetail.split('x');
-                    if(parts.length === 2) {
-                        const name = parts[0].trim();
-                        const qty = parseInt(parts[1].trim());
+            filteredSales.forEach(sale => {
+                (sale.items || "").split(',').forEach(itemDetail => {
+                    const parts = itemDetail.trim().match(/(.+) x(\d+)/);
+                    if(parts && parts.length === 3) {
+                        const name = parts[1].trim();
+                        const qty = parseInt(parts[2].trim());
                         productSales[name] = (productSales[name] || 0) + qty;
                     }
                 });
             });
             
-            const topProduct = Object.keys(productSales).reduce((a, b) => 
-                productSales[a] > productSales[b] ? a : b, '-'
-            );
+            const topProduct = Object.keys(productSales).length > 0
+                ? Object.keys(productSales).reduce((a, b) => productSales[a] > productSales[b] ? a : b)
+                : '-';
 
-            const lowStockCount = allData.products.filter(product => 
-                product.stock_73 < 10 || product.stock_induksi < 10 || product.stock_kelanis < 10
+            const lowStockCount = allData.products.filter(p => 
+                (p.stock_73 < 10 && p.stock_73 > 0) || 
+                (p.stock_induksi < 10 && p.stock_induksi > 0) || 
+                (p.stock_kelanis < 10 && p.stock_kelanis > 0)
             ).length;
 
             document.getElementById('totalRevenue').textContent = `Rp ${totalRevenue.toLocaleString('id-ID')}`;
@@ -522,7 +505,7 @@
             const areaSales = {'adamart 73': 0, 'adamart induksi': 0, 'adamart kelanis': 0};
             const areaTransactions = {'adamart 73': 0, 'adamart induksi': 0, 'adamart kelanis': 0};
 
-            filteredData.sales.forEach(sale => {
+            filteredSales.forEach(sale => {
                 if(areaSales[sale.area] !== undefined) {
                     areaSales[sale.area] += sale.total;
                     areaTransactions[sale.area]++;
@@ -545,15 +528,20 @@
         }
         
         function updateTopProducts() {
-            const areas = ['adamart 73', 'adamart induksi', 'adamart kelanis'];
-            areas.forEach(area => {
+            const areas = {
+                'adamart 73': 'topProducts73',
+                'adamart induksi': 'topProductsInduksi',
+                'adamart kelanis': 'topProductsKelanis'
+            };
+
+            Object.keys(areas).forEach(area => {
                 const productSales = {};
-                filteredData.sales.filter(s => s.area === area).forEach(sale => {
-                    sale.items.split(',').forEach(itemDetail => {
-                        const parts = itemDetail.split('x');
-                        if(parts.length === 2) {
-                            const name = parts[0].trim();
-                            const qty = parseInt(parts[1].trim());
+                filteredSales.filter(s => s.area === area).forEach(sale => {
+                    (sale.items || "").split(',').forEach(itemDetail => {
+                        const parts = itemDetail.trim().match(/(.+) x(\d+)/);
+                        if(parts && parts.length === 3) {
+                            const name = parts[1].trim();
+                            const qty = parseInt(parts[2].trim());
                             productSales[name] = (productSales[name] || 0) + qty;
                         }
                     });
@@ -563,11 +551,10 @@
                     .sort(([,a], [,b]) => b - a)
                     .slice(0, 3);
                 
-                const containerId = `topProducts${area.split(' ')[1].charAt(0).toUpperCase() + area.split(' ')[1].slice(1)}`;
-                const container = document.getElementById(containerId);
+                const container = document.getElementById(areas[area]);
 
                 if (sortedProducts.length === 0) {
-                    container.innerHTML = '<p class="text-gray-500 text-sm">Tidak ada data</p>';
+                    container.innerHTML = '<p class="text-gray-500 text-sm">Tidak ada penjualan</p>';
                 } else {
                     container.innerHTML = sortedProducts.map(([product, quantity], index) => `
                         <div class="flex items-center justify-between">
@@ -585,15 +572,17 @@
 
         function updateLowStockAlerts() {
             const areas = {
-                'adamart 73': 'lowStock73',
-                'adamart induksi': 'lowStockInduksi',
-                'adamart kelanis': 'lowStockKelanis'
+                'adamart 73': { id: 'lowStock73', stockField: 'stock_73' },
+                'adamart induksi': { id: 'lowStockInduksi', stockField: 'stock_induksi' },
+                'adamart kelanis': { id: 'lowStockKelanis', stockField: 'stock_kelanis' }
             };
             
-            Object.keys(areas).forEach(area => {
-                const stockField = `stock_${area.split(' ')[1]}`;
-                const lowStockProducts = allData.products.filter(p => p[stockField] < 10 && p[stockField] > 0).slice(0, 5);
-                const container = document.getElementById(areas[area]);
+            Object.values(areas).forEach(areaInfo => {
+                const lowStockProducts = allData.products
+                    .filter(p => p[areaInfo.stockField] < 10 && p[areaInfo.stockField] > 0)
+                    .sort((a,b) => a[areaInfo.stockField] - b[areaInfo.stockField])
+                    .slice(0, 5);
+                const container = document.getElementById(areaInfo.id);
 
                 if (lowStockProducts.length === 0) {
                     container.innerHTML = '<p class="text-gray-500 text-sm">Semua stok aman</p>';
@@ -601,7 +590,7 @@
                     container.innerHTML = lowStockProducts.map(product => `
                         <div class="flex items-center justify-between bg-white p-2 rounded border-l-4 border-red-500">
                             <span class="text-sm font-medium">${product.name}</span>
-                            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">${product[stockField]} tersisa</span>
+                            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">${product[areaInfo.stockField]} tersisa</span>
                         </div>
                     `).join('');
                 }
@@ -612,17 +601,19 @@
             const tbody = document.getElementById('transactionHistory');
             const searchTerm = document.getElementById('transactionSearch').value.toLowerCase();
             
-            let displaySales = filteredData.sales.filter(sale => 
-                Object.values(sale).join(' ').toLowerCase().includes(searchTerm)
+            let displaySales = filteredSales.filter(sale => 
+                (sale.items && sale.items.toLowerCase().includes(searchTerm)) ||
+                (sale.area && sale.area.toLowerCase().includes(searchTerm)) ||
+                (sale.method && sale.method.toLowerCase().includes(searchTerm))
             );
             
             if (displaySales.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-500">Tidak ada data transaksi</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-500">Tidak ada transaksi yang cocok</td></tr>';
                 document.getElementById('transactionCount').textContent = '0';
                 return;
             }
 
-            tbody.innerHTML = displaySales.slice(0, 20).map(sale => `
+            tbody.innerHTML = displaySales.slice(0, 50).map(sale => `
                 <tr class="border-b hover:bg-gray-50">
                     <td class="p-3">
                         <div class="text-sm">${new Date(sale.timestamp).toLocaleDateString('id-ID')}</div>
@@ -663,27 +654,28 @@
             }
 
             tbody.innerHTML = displayProducts.map(product => {
-                const totalStock = product.stock_73 + product.stock_induksi + product.stock_kelanis;
+                const totalStock = (product.stock_73 || 0) + (product.stock_induksi || 0) + (product.stock_kelanis || 0);
                 const isLowStock = product.stock_73 < 10 || product.stock_induksi < 10 || product.stock_kelanis < 10;
                 
                 return `
                     <tr class="border-b hover:bg-gray-50">
                         <td class="p-3"><div class="font-medium">${product.name}</div><div class="text-xs text-gray-500">${product.barcode}</div></td>
                         <td class="p-3 font-medium">Rp ${product.price.toLocaleString('id-ID')}</td>
-                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(product.stock_73)} rounded text-xs">${product.stock_73}</span></td>
-                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(product.stock_induksi)} rounded text-xs">${product.stock_induksi}</span></td>
-                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(product.stock_kelanis)} rounded text-xs">${product.stock_kelanis}</span></td>
+                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(product.stock_73)} rounded text-xs">${product.stock_73 || 0}</span></td>
+                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(product.stock_induksi)} rounded text-xs">${product.stock_induksi || 0}</span></td>
+                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(product.stock_kelanis)} rounded text-xs">${product.stock_kelanis || 0}</span></td>
                         <td class="p-3 font-medium">${totalStock}</td>
-                        <td class="p-3"><span class="px-2 py-1 ${isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} rounded text-xs">${isLowStock ? '⚠️ Menipis' : '✅ Aman'}</span></td>
+                        <td class="p-3"><span class="px-2 py-1 ${totalStock < 10 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} rounded text-xs">${totalStock < 10 ? '⚠️ Menipis' : '✅ Aman'}</span></td>
                     </tr>
                 `;
             }).join('');
         }
 
         function getStockColor(stock) {
-            if (stock > 20) return 'bg-green-100 text-green-800';
-            if (stock > 10) return 'bg-yellow-100 text-yellow-800';
-            if (stock > 0) return 'bg-orange-100 text-orange-800';
+            const s = stock || 0;
+            if (s > 20) return 'bg-green-100 text-green-800';
+            if (s >= 10) return 'bg-yellow-100 text-yellow-800';
+            if (s > 0) return 'bg-orange-100 text-orange-800';
             return 'bg-red-100 text-red-800';
         }
 
@@ -696,8 +688,8 @@
             }
 
             tbody.innerHTML = allData.reports.map(report => {
-                const product = allData.products.find(p => p.barcode === report.barcode);
-                const lossValue = product ? product.price * report.quantity : 0;
+                const product = allData.products.find(p => p.barcode == report.barcode);
+                const lossValue = product ? (product.price || 0) * (report.quantity || 0) : 0;
                 
                 return `
                     <tr class="border-b hover:bg-gray-50">
@@ -724,21 +716,31 @@
                     quantity: parseInt(document.getElementById('stockAmount').value)
                 };
 
+                const submitBtn = e.target.querySelector('button[type="submit"]');
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Menyimpan...';
+
                 try {
                     const response = await fetch(APPS_SCRIPT_URL, {
                         method: 'POST',
-                        mode: 'no-cors',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({action: 'update_stock', data: formData})
                     });
                     
-                    alert('✅ Stok berhasil diupdate! Data akan diperbarui.');
-                    this.reset();
-                    loadManagerData();
-
+                    const result = await response.json();
+                    if (result.success) {
+                        alert('✅ Stok berhasil diupdate! Data akan dimuat ulang.');
+                        this.reset();
+                        refreshData();
+                    } else {
+                         throw new Error(result.error || 'Gagal mengupdate stok dari skrip.');
+                    }
                 } catch (error) {
                     console.error('Error updating stock:', error);
-                    alert('❌ Gagal mengupdate stok. Silakan coba lagi.');
+                    alert(`❌ Gagal mengupdate stok: ${error.message}`);
+                } finally {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '💾 Simpan Produk/Stok';
                 }
             });
         }
@@ -757,10 +759,14 @@
         }
 
         function exportTransactions() {
+            if (filteredSales.length === 0) {
+                alert("Tidak ada data transaksi untuk diekspor.");
+                return;
+            }
             const csvContent = "data:text/csv;charset=utf-8," 
                 + "Waktu,Area,Items,Total,Metode\n"
-                + filteredData.sales.map(sale => 
-                    `"${new Date(sale.timestamp).toLocaleString('id-ID')}","${sale.area}","${sale.items.replace(/"/g, '""')}","${sale.total}","${sale.method}"`
+                + filteredSales.map(sale => 
+                    `"${new Date(sale.timestamp).toLocaleString('id-ID')}","${sale.area}","${(sale.items || "").replace(/"/g, '""')}","${sale.total}","${sale.method}"`
                 ).join("\n");
 
             const encodedUri = encodeURI(csvContent);
@@ -770,10 +776,6 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-        }
-
-        function loadMoreTransactions() {
-            alert('Fitur ini akan diimplementasikan di masa mendatang.');
         }
 
         function refreshData() {
@@ -792,3 +794,4 @@
     </script>
 </body>
 </html>
+
