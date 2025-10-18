@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adamart - Dashboard Manager</title>
+    <title>Adamart - Manager Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -46,9 +46,28 @@
         .chart-bar:hover {
             transform: scaleY(1.1);
         }
-        .search-box {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .bounce-in {
+            animation: bounceIn 0.6s ease-out;
+        }
+        @keyframes bounceIn {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.05); }
+            70% { transform: scale(0.9); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .slide-up {
+            animation: slideUp 0.4s ease-out;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
     </style>
 </head>
@@ -61,35 +80,47 @@
                 <p class="text-sm opacity-90">Dashboard Manajemen Toko</p>
             </div>
             <div class="flex items-center space-x-2">
-                <div class="search-box rounded-lg px-3 py-2">
-                    <input type="text" id="globalSearch" placeholder="Cari produk..." class="bg-transparent text-white placeholder-white placeholder-opacity-70 outline-none text-sm w-32 md:w-48">
-                </div>
                 <button onclick="refreshData()" class="bg-white bg-opacity-20 p-2 rounded-lg hover:bg-opacity-30 transition-all">
                     <span id="refreshIcon">🔄</span>
                 </button>
+                <div class="text-right text-xs">
+                    <div id="lastUpdate" class="opacity-75">Loading...</div>
+                    <div id="connectionStatus" class="text-green-300">🟢 Online</div>
+                </div>
             </div>
         </div>
     </header>
 
     <div class="container mx-auto p-4 space-y-6 pb-20">
         <!-- Loading State -->
-        <div id="loadingState" class="text-center py-8">
+        <div id="loadingState" class="text-center py-12">
             <div class="loading bg-adamart-500 w-16 h-16 rounded-full mx-auto mb-4"></div>
-            <p class="text-gray-600">Memuat data dari Google Sheets...</p>
+            <p class="text-gray-600 text-lg">Memuat data dari Google Sheets...</p>
+            <p class="text-gray-500 text-sm mt-2">Mohon tunggu sebentar</p>
+        </div>
+
+        <!-- Error State -->
+        <div id="errorState" class="hidden text-center py-12">
+            <div class="text-6xl mb-4">⚠️</div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Gagal Memuat Data</h3>
+            <p class="text-gray-600 mb-4">Tidak dapat terhubung ke Google Sheets</p>
+            <button onclick="refreshData()" class="bg-adamart-600 text-white px-6 py-3 rounded-lg hover:bg-adamart-700 transition-all">
+                🔄 Coba Lagi
+            </button>
         </div>
 
         <!-- Dashboard Content -->
         <div id="dashboardContent" class="hidden space-y-6">
             <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 fade-in">
                 <div class="bg-gradient-to-r from-green-400 to-green-600 text-white p-6 rounded-xl card-shadow">
                     <div class="flex items-center justify-between">
                         <div>
                             <p class="text-green-100 text-sm">Total Pendapatan</p>
                             <p id="totalRevenue" class="text-2xl font-bold">Rp 0</p>
-                            <p id="revenueGrowth" class="text-xs text-green-100">data hari ini</p>
+                            <p id="revenueGrowth" class="text-xs text-green-100">Hari ini</p>
                         </div>
-                        <div class="text-3xl">💰</div>
+                        <div class="text-4xl">💰</div>
                     </div>
                 </div>
                 
@@ -98,9 +129,9 @@
                         <div>
                             <p class="text-blue-100 text-sm">Total Transaksi</p>
                             <p id="totalTransactions" class="text-2xl font-bold">0</p>
-                            <p id="transactionGrowth" class="text-xs text-blue-100">data hari ini</p>
+                            <p id="transactionGrowth" class="text-xs text-blue-100">Hari ini</p>
                         </div>
-                        <div class="text-3xl">📊</div>
+                        <div class="text-4xl">📊</div>
                     </div>
                 </div>
                 
@@ -111,36 +142,28 @@
                             <p id="topProduct" class="text-lg font-bold">-</p>
                             <p id="topProductSales" class="text-xs text-purple-100">0 terjual</p>
                         </div>
-                        <div class="text-3xl">🏆</div>
-                    </div>
-                </div>
-
-                <div class="bg-gradient-to-r from-red-400 to-red-600 text-white p-6 rounded-xl card-shadow">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-red-100 text-sm">Stok Menipis</p>
-                            <p id="lowStockCount" class="text-2xl font-bold">0</p>
-                            <p class="text-xs text-red-100">Produk < 10 stok</p>
-                        </div>
-                        <div class="text-3xl">⚠️</div>
+                        <div class="text-4xl">🏆</div>
                     </div>
                 </div>
             </div>
 
             <!-- Filter Area -->
-            <div class="bg-white rounded-xl p-4 card-shadow">
+            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
-                    <h3 class="text-lg font-semibold">📍 Filter Data</h3>
+                    <h3 class="text-lg font-semibold flex items-center">
+                        <span class="mr-2">📍</span>
+                        Filter Data Penjualan
+                    </h3>
                     <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-3">
-                        <select id="areaFilter" onchange="applyFilters()" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500">
+                        <select id="areaFilter" onchange="filterByArea()" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 bg-white">
                             <option value="all">Semua Area</option>
                             <option value="adamart 73">Adamart 73</option>
                             <option value="adamart induksi">Adamart Induksi</option>
                             <option value="adamart kelanis">Adamart Kelanis</option>
                         </select>
-                        <select id="dateFilter" onchange="applyFilters()" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500">
+                        <select id="dateFilter" onchange="filterByDate()" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 bg-white">
                             <option value="today">Hari Ini</option>
-                            <option value="week">7 Hari Terakhir</option>
+                            <option value="week">Minggu Ini</option>
                             <option value="month">Bulan Ini</option>
                             <option value="all">Semua Waktu</option>
                         </select>
@@ -149,44 +172,47 @@
             </div>
 
             <!-- Sales Performance Chart -->
-            <div class="bg-white rounded-xl p-4 card-shadow">
-                <h3 class="text-lg font-semibold mb-4">📈 Performa Penjualan per Area</h3>
+            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <span class="mr-2">📈</span>
+                    Performa Penjualan per Area
+                </h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="text-center">
-                        <div class="bg-blue-100 rounded-lg p-4">
-                            <div class="text-2xl mb-2">🏢</div>
+                        <div class="bg-blue-100 rounded-lg p-4 hover:bg-blue-200 transition-all">
+                            <div class="text-3xl mb-2">🏢</div>
                             <h4 class="font-semibold text-blue-800">Adamart 73</h4>
-                            <div class="mt-2">
+                            <div class="mt-3">
                                 <div class="bg-blue-200 rounded-full h-4 mb-2">
                                     <div id="chart73" class="bg-blue-600 h-4 rounded-full chart-bar" style="width: 0%"></div>
                                 </div>
-                                <p id="sales73" class="text-sm text-blue-700">Rp 0</p>
+                                <p id="sales73" class="text-sm text-blue-700 font-medium">Rp 0</p>
                                 <p id="transactions73" class="text-xs text-blue-600">0 transaksi</p>
                             </div>
                         </div>
                     </div>
                     <div class="text-center">
-                        <div class="bg-green-100 rounded-lg p-4">
-                            <div class="text-2xl mb-2">⚡</div>
+                        <div class="bg-green-100 rounded-lg p-4 hover:bg-green-200 transition-all">
+                            <div class="text-3xl mb-2">⚡</div>
                             <h4 class="font-semibold text-green-800">Adamart Induksi</h4>
-                            <div class="mt-2">
+                            <div class="mt-3">
                                 <div class="bg-green-200 rounded-full h-4 mb-2">
                                     <div id="chartInduksi" class="bg-green-600 h-4 rounded-full chart-bar" style="width: 0%"></div>
                                 </div>
-                                <p id="salesInduksi" class="text-sm text-green-700">Rp 0</p>
+                                <p id="salesInduksi" class="text-sm text-green-700 font-medium">Rp 0</p>
                                 <p id="transactionsInduksi" class="text-xs text-green-600">0 transaksi</p>
                             </div>
                         </div>
                     </div>
                     <div class="text-center">
-                        <div class="bg-purple-100 rounded-lg p-4">
-                            <div class="text-2xl mb-2">🌟</div>
+                        <div class="bg-purple-100 rounded-lg p-4 hover:bg-purple-200 transition-all">
+                            <div class="text-3xl mb-2">🌟</div>
                             <h4 class="font-semibold text-purple-800">Adamart Kelanis</h4>
-                            <div class="mt-2">
+                            <div class="mt-3">
                                 <div class="bg-purple-200 rounded-full h-4 mb-2">
                                     <div id="chartKelanis" class="bg-purple-600 h-4 rounded-full chart-bar" style="width: 0%"></div>
                                 </div>
-                                <p id="salesKelanis" class="text-sm text-purple-700">Rp 0</p>
+                                <p id="salesKelanis" class="text-sm text-purple-700 font-medium">Rp 0</p>
                                 <p id="transactionsKelanis" class="text-xs text-purple-600">0 transaksi</p>
                             </div>
                         </div>
@@ -195,62 +221,90 @@
             </div>
 
             <!-- Top Products per Area -->
-            <div class="bg-white rounded-xl p-4 card-shadow">
-                <h3 class="text-lg font-semibold mb-4">🏆 Produk Terlaris per Area</h3>
+            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <span class="mr-2">🏆</span>
+                    Produk Terlaris per Area
+                </h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <h4 class="font-semibold text-blue-800 mb-3">🏢 Adamart 73</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-blue-50">
+                        <h4 class="font-semibold text-blue-800 mb-3 flex items-center">
+                            <span class="mr-2">🏢</span>
+                            Adamart 73
+                        </h4>
                         <div id="topProducts73" class="space-y-2">
-                            <p class="text-gray-500 text-sm">Tidak ada data</p>
+                            <p class="text-gray-500 text-sm">Memuat data...</p>
                         </div>
                     </div>
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <h4 class="font-semibold text-green-800 mb-3">⚡ Adamart Induksi</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-green-50">
+                        <h4 class="font-semibold text-green-800 mb-3 flex items-center">
+                            <span class="mr-2">⚡</span>
+                            Adamart Induksi
+                        </h4>
                         <div id="topProductsInduksi" class="space-y-2">
-                            <p class="text-gray-500 text-sm">Tidak ada data</p>
+                            <p class="text-gray-500 text-sm">Memuat data...</p>
                         </div>
                     </div>
-                    <div class="border border-gray-200 rounded-lg p-4">
-                        <h4 class="font-semibold text-purple-800 mb-3">🌟 Adamart Kelanis</h4>
+                    <div class="border border-gray-200 rounded-lg p-4 bg-purple-50">
+                        <h4 class="font-semibold text-purple-800 mb-3 flex items-center">
+                            <span class="mr-2">🌟</span>
+                            Adamart Kelanis
+                        </h4>
                         <div id="topProductsKelanis" class="space-y-2">
-                            <p class="text-gray-500 text-sm">Tidak ada data</p>
+                            <p class="text-gray-500 text-sm">Memuat data...</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Low Stock Alert -->
-            <div class="bg-white rounded-xl p-4 card-shadow">
-                <h3 class="text-lg font-semibold mb-4">⚠️ Peringatan Stok Menipis</h3>
+            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <span class="mr-2">⚠️</span>
+                    Produk Stok Menipis (< 10)
+                </h3>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div class="border border-red-200 rounded-lg p-4 bg-red-50">
-                        <h4 class="font-semibold text-red-800 mb-3">🏢 Adamart 73</h4>
-                        <div id="lowStock73" class="space-y-2 max-h-32 overflow-y-auto">
-                            <p class="text-gray-500 text-sm">Semua stok aman</p>
+                        <h4 class="font-semibold text-red-800 mb-3 flex items-center">
+                            <span class="mr-2">🏢</span>
+                            Adamart 73
+                        </h4>
+                        <div id="lowStock73" class="space-y-2 max-h-40 overflow-y-auto">
+                            <p class="text-gray-500 text-sm">Memuat data...</p>
                         </div>
                     </div>
                     <div class="border border-red-200 rounded-lg p-4 bg-red-50">
-                        <h4 class="font-semibold text-red-800 mb-3">⚡ Adamart Induksi</h4>
-                        <div id="lowStockInduksi" class="space-y-2 max-h-32 overflow-y-auto">
-                            <p class="text-gray-500 text-sm">Semua stok aman</p>
+                        <h4 class="font-semibold text-red-800 mb-3 flex items-center">
+                            <span class="mr-2">⚡</span>
+                            Adamart Induksi
+                        </h4>
+                        <div id="lowStockInduksi" class="space-y-2 max-h-40 overflow-y-auto">
+                            <p class="text-gray-500 text-sm">Memuat data...</p>
                         </div>
                     </div>
                     <div class="border border-red-200 rounded-lg p-4 bg-red-50">
-                        <h4 class="font-semibold text-red-800 mb-3">🌟 Adamart Kelanis</h4>
-                        <div id="lowStockKelanis" class="space-y-2 max-h-32 overflow-y-auto">
-                            <p class="text-gray-500 text-sm">Semua stok aman</p>
+                        <h4 class="font-semibold text-red-800 mb-3 flex items-center">
+                            <span class="mr-2">🌟</span>
+                            Adamart Kelanis
+                        </h4>
+                        <div id="lowStockKelanis" class="space-y-2 max-h-40 overflow-y-auto">
+                            <p class="text-gray-500 text-sm">Memuat data...</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Riwayat Transaksi -->
-            <div class="bg-white rounded-xl p-4 card-shadow">
+            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-                    <h3 class="text-lg font-semibold">📋 Riwayat Transaksi</h3>
+                    <h3 class="text-lg font-semibold flex items-center">
+                        <span class="mr-2">📋</span>
+                        Riwayat Transaksi
+                    </h3>
                     <div class="flex items-center space-x-2 mt-2 md:mt-0">
-                        <input type="text" id="transactionSearch" placeholder="Cari transaksi..." class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-adamart-500">
-                        <button onclick="exportTransactions()" class="bg-adamart-600 text-white px-4 py-2 rounded-lg hover:bg-adamart-700 transition-colors text-sm">
+                        <input type="text" id="transactionSearch" placeholder="Cari transaksi..." 
+                               class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-adamart-500 w-full md:w-48">
+                        <button onclick="exportTransactions()" class="bg-adamart-600 text-white px-4 py-2 rounded-lg hover:bg-adamart-700 transition-colors text-sm whitespace-nowrap">
                             📊 Export
                         </button>
                     </div>
@@ -259,55 +313,64 @@
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="p-3 text-left">Waktu</th>
-                                <th class="p-3 text-left">Area</th>
-                                <th class="p-3 text-left">Items</th>
-                                <th class="p-3 text-left">Total</th>
-                                <th class="p-3 text-left">Metode</th>
-                                <th class="p-3 text-left">Detail</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Waktu</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Area</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Items</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Total</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Metode</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Detail</th>
                             </tr>
                         </thead>
                         <tbody id="transactionHistory">
                             <tr>
-                                <td colspan="6" class="p-8 text-center text-gray-500">Tidak ada data transaksi</td>
+                                <td colspan="6" class="p-8 text-center text-gray-500">Memuat data transaksi...</td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
                 <div class="flex justify-between items-center mt-4">
                     <p class="text-sm text-gray-600">Menampilkan <span id="transactionCount">0</span> transaksi</p>
-                    <div class="flex space-x-2">
-                        <button onclick="alert('Fitur ini akan diimplementasikan di masa mendatang.')" class="text-adamart-600 hover:text-adamart-700 text-sm">Muat Lebih Banyak</button>
-                    </div>
+                    <button onclick="loadMoreTransactions()" class="text-adamart-600 hover:text-adamart-700 text-sm font-medium">
+                        Muat Lebih Banyak
+                    </button>
                 </div>
             </div>
 
             <!-- Manajemen Stok -->
-            <div class="bg-white rounded-xl p-4 card-shadow">
-                <h3 class="text-lg font-semibold mb-4">📦 Manajemen Stok</h3>
+            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <span class="mr-2">📦</span>
+                    Manajemen Stok
+                </h3>
                 
                 <!-- Form Tambah Produk/Stok -->
-                <div class="bg-adamart-50 p-4 rounded-lg mb-6">
-                    <h4 class="font-medium mb-3">➕ Tambah Produk/Stok Baru</h4>
+                <div class="bg-gradient-to-r from-adamart-50 to-blue-50 p-4 rounded-lg mb-6 border border-adamart-200">
+                    <h4 class="font-medium mb-3 flex items-center text-adamart-800">
+                        <span class="mr-2">➕</span>
+                        Tambah Produk/Stok Baru
+                    </h4>
                     <form id="stockForm" class="space-y-3">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                                 <label for="barcode" class="block text-sm font-medium text-gray-700 mb-1">Barcode</label>
-                                <input type="text" id="barcode" placeholder="Masukkan barcode" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required>
+                                <input type="text" id="barcode" placeholder="Masukkan barcode" 
+                                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 focus:border-adamart-500" required>
                             </div>
                             <div>
                                 <label for="productName" class="block text-sm font-medium text-gray-700 mb-1">Nama Produk</label>
-                                <input type="text" id="productName" placeholder="Masukkan nama produk" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required>
+                                <input type="text" id="productName" placeholder="Masukkan nama produk" 
+                                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 focus:border-adamart-500" required>
                             </div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
                                 <label for="price" class="block text-sm font-medium text-gray-700 mb-1">Harga</label>
-                                <input type="number" id="price" placeholder="Harga jual" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required>
+                                <input type="number" id="price" placeholder="Harga jual" min="0" 
+                                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 focus:border-adamart-500" required>
                             </div>
                             <div>
                                 <label for="targetArea" class="block text-sm font-medium text-gray-700 mb-1">Area Tujuan</label>
-                                <select id="targetArea" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required>
+                                <select id="targetArea" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 focus:border-adamart-500 bg-white" required>
                                     <option value="">Pilih Area</option>
                                     <option value="adamart 73">Adamart 73</option>
                                     <option value="adamart induksi">Adamart Induksi</option>
@@ -316,7 +379,8 @@
                             </div>
                             <div>
                                 <label for="stockAmount" class="block text-sm font-medium text-gray-700 mb-1">Jumlah Stok</label>
-                                <input type="number" id="stockAmount" placeholder="Jumlah stok" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required>
+                                <input type="number" id="stockAmount" placeholder="Jumlah stok" min="1" 
+                                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 focus:border-adamart-500" required>
                             </div>
                         </div>
                         <button type="submit" class="w-full bg-adamart-600 text-white py-3 rounded-lg hover:bg-adamart-700 transition-colors font-medium">
@@ -328,26 +392,30 @@
                 <!-- Tabel Stok -->
                 <div class="mb-4">
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-3">
-                        <h4 class="font-medium">📊 Data Stok Produk</h4>
-                        <input type="text" id="stockSearch" placeholder="Cari produk..." class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-adamart-500 mt-2 md:mt-0">
+                        <h4 class="font-medium flex items-center">
+                            <span class="mr-2">📊</span>
+                            Data Stok Produk
+                        </h4>
+                        <input type="text" id="stockSearch" placeholder="Cari produk..." 
+                               class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-adamart-500 mt-2 md:mt-0 w-full md:w-48">
                     </div>
                 </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="p-3 text-left">Produk</th>
-                                <th class="p-3 text-left">Harga</th>
-                                <th class="p-3 text-left">Adamart 73</th>
-                                <th class="p-3 text-left">Adamart Induksi</th>
-                                <th class="p-3 text-left">Adamart Kelanis</th>
-                                <th class="p-3 text-left">Total Stok</th>
-                                <th class="p-3 text-left">Status</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Produk</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Harga</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Adamart 73</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Adamart Induksi</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Adamart Kelanis</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Total Stok</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Status</th>
                             </tr>
                         </thead>
                         <tbody id="stockTable">
                             <tr>
-                                <td colspan="7" class="p-8 text-center text-gray-500">Tidak ada data stok</td>
+                                <td colspan="7" class="p-8 text-center text-gray-500">Memuat data stok...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -355,23 +423,26 @@
             </div>
 
             <!-- Laporan Barang Rusak/Expired -->
-            <div class="bg-white rounded-xl p-4 card-shadow">
-                <h3 class="text-lg font-semibold mb-4">⚠️ Laporan Barang Rusak/Expired</h3>
+            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <span class="mr-2">⚠️</span>
+                    Laporan Barang Rusak/Expired
+                </h3>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50">
                             <tr>
-                                <th class="p-3 text-left">Waktu</th>
-                                <th class="p-3 text-left">Produk</th>
-                                <th class="p-3 text-left">Jumlah</th>
-                                <th class="p-3 text-left">Keterangan</th>
-                                <th class="p-3 text-left">Area</th>
-                                <th class="p-3 text-left">Nilai Kerugian</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Waktu</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Produk</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Jumlah</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Keterangan</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Area</th>
+                                <th class="p-3 text-left font-medium text-gray-700">Nilai Kerugian</th>
                             </tr>
                         </thead>
                         <tbody id="damageReports">
                             <tr>
-                                <td colspan="6" class="p-8 text-center text-gray-500">Tidak ada laporan</td>
+                                <td colspan="6" class="p-8 text-center text-gray-500">Memuat laporan...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -380,8 +451,24 @@
         </div>
     </div>
 
+    <!-- Success Toast -->
+    <div id="successToast" class="hidden fixed top-4 right-4 z-50 bg-green-500 text-white p-4 rounded-lg shadow-lg bounce-in">
+        <div class="flex items-center space-x-2">
+            <span class="text-xl">✅</span>
+            <span id="successMessage">Berhasil!</span>
+        </div>
+    </div>
+
+    <!-- Error Toast -->
+    <div id="errorToast" class="hidden fixed top-4 right-4 z-50 bg-red-500 text-white p-4 rounded-lg shadow-lg bounce-in">
+        <div class="flex items-center space-x-2">
+            <span class="text-xl">❌</span>
+            <span id="errorMessage">Terjadi kesalahan!</span>
+        </div>
+    </div>
+
     <script>
-        // Configuration
+        // Configuration - URL Google Apps Script Adamart
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztGJnMLgclP0ji0VnqXgI3M9nCHq2_6CU57xUQLCJmomCCqCj85I8YxcZJAMYnuE3wpA/exec';
         
         let allData = {
@@ -390,7 +477,10 @@
             reports: []
         };
 
-        let filteredSales = [];
+        let filteredData = {
+            sales: [],
+            products: []
+        };
 
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
@@ -402,61 +492,40 @@
         async function loadManagerData() {
             try {
                 showLoading(true);
+                updateConnectionStatus('connecting');
                 
-                const response = await fetch(`${APPS_SCRIPT_URL}?action=get_manager_data`);
+                const response = await fetch(`${APPS_SCRIPT_URL}?action=get_manager_data`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
+                
                 const data = await response.json();
                 
                 if (data.success) {
-                    allData = data;
-                    applyFilters(); // Apply initial filters
+                    allData = data.data;
+                    filteredData.sales = [...allData.sales];
+                    filteredData.products = [...allData.products];
+                    updateDashboard();
+                    updateConnectionStatus('online');
+                    updateLastUpdate();
+                    showLoading(false);
                 } else {
-                    throw new Error(data.error || 'Gagal memuat data dari skrip');
+                    throw new Error(data.error || 'Failed to load data');
                 }
+                
             } catch (error) {
                 console.error('Error loading data:', error);
-                alert(`Gagal memuat data dari server: ${error.message}. Silakan muat ulang halaman.`);
-                // Show empty dashboard on failure
-                allData = { products: [], sales: [], reports: [] };
-                applyFilters();
-            } finally {
-                showLoading(false);
+                updateConnectionStatus('offline');
+                showError('Gagal memuat data dari Google Sheets. Periksa koneksi internet dan URL Apps Script.');
+                showLoading(false, true);
             }
         }
-
-        function applyFilters() {
-            const selectedArea = document.getElementById('areaFilter').value;
-            const selectedDate = document.getElementById('dateFilter').value;
-            const now = new Date();
-            let startDate;
-
-            switch(selectedDate) {
-                case 'today':
-                    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                    break;
-                case 'week':
-                    startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-                    break;
-                case 'month':
-                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                    break;
-                default: // 'all'
-                    startDate = new Date(0); // The beginning of time
-                    break;
-            }
-
-            let tempSales = allData.sales.filter(sale => new Date(sale.timestamp) >= startDate);
-
-            if (selectedArea !== 'all') {
-                tempSales = tempSales.filter(sale => sale.area === selectedArea);
-            }
-            
-            filteredSales = tempSales;
-            updateDashboard();
-        }
-
 
         function updateDashboard() {
             updateSummaryCards();
@@ -469,55 +538,64 @@
         }
 
         function updateSummaryCards() {
-            const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
-            const totalTransactions = filteredSales.length;
+            const totalRevenue = filteredData.sales.reduce((sum, sale) => sum + (sale.total || 0), 0);
+            const totalTransactions = filteredData.sales.length;
             
+            // Find top product
             const productSales = {};
-            filteredSales.forEach(sale => {
-                (sale.items || "").split(',').forEach(itemDetail => {
-                    const parts = itemDetail.trim().match(/(.+) x(\d+)/);
-                    if(parts && parts.length === 3) {
-                        const name = parts[1].trim();
-                        const qty = parseInt(parts[2].trim());
-                        productSales[name] = (productSales[name] || 0) + qty;
-                    }
-                });
+            filteredData.sales.forEach(sale => {
+                if (sale.items) {
+                    const items = sale.items.split(',');
+                    items.forEach(item => {
+                        const match = item.trim().match(/^(.+?)\s+x(\d+)$/);
+                        if (match) {
+                            const productName = match[1].trim();
+                            const quantity = parseInt(match[2]);
+                            productSales[productName] = (productSales[productName] || 0) + quantity;
+                        }
+                    });
+                }
             });
             
-            const topProduct = Object.keys(productSales).length > 0
-                ? Object.keys(productSales).reduce((a, b) => productSales[a] > productSales[b] ? a : b)
-                : '-';
-
-            const lowStockCount = allData.products.filter(p => 
-                (p.stock_73 < 10 && p.stock_73 > 0) || 
-                (p.stock_induksi < 10 && p.stock_induksi > 0) || 
-                (p.stock_kelanis < 10 && p.stock_kelanis > 0)
-            ).length;
+            const topProduct = Object.keys(productSales).length > 0 ? 
+                Object.keys(productSales).reduce((a, b) => productSales[a] > productSales[b] ? a : b) : '-';
 
             document.getElementById('totalRevenue').textContent = `Rp ${totalRevenue.toLocaleString('id-ID')}`;
             document.getElementById('totalTransactions').textContent = totalTransactions;
             document.getElementById('topProduct').textContent = topProduct;
             document.getElementById('topProductSales').textContent = `${productSales[topProduct] || 0} terjual`;
-            document.getElementById('lowStockCount').textContent = lowStockCount;
         }
 
         function updateSalesChart() {
-            const areaSales = {'adamart 73': 0, 'adamart induksi': 0, 'adamart kelanis': 0};
-            const areaTransactions = {'adamart 73': 0, 'adamart induksi': 0, 'adamart kelanis': 0};
+            const areaSales = {
+                'adamart 73': 0,
+                'adamart induksi': 0,
+                'adamart kelanis': 0
+            };
 
-            filteredSales.forEach(sale => {
-                if(areaSales[sale.area] !== undefined) {
-                    areaSales[sale.area] += sale.total;
-                    areaTransactions[sale.area]++;
+            const areaTransactions = {
+                'adamart 73': 0,
+                'adamart induksi': 0,
+                'adamart kelanis': 0
+            };
+
+            filteredData.sales.forEach(sale => {
+                if (sale.area && sale.total) {
+                    areaSales[sale.area] = (areaSales[sale.area] || 0) + sale.total;
+                    areaTransactions[sale.area] = (areaTransactions[sale.area] || 0) + 1;
                 }
             });
 
-            const maxSales = Math.max(1, ...Object.values(areaSales));
+            const maxSales = Math.max(...Object.values(areaSales));
 
-            document.getElementById('chart73').style.width = `${(areaSales['adamart 73'] / maxSales) * 100}%`;
-            document.getElementById('chartInduksi').style.width = `${(areaSales['adamart induksi'] / maxSales) * 100}%`;
-            document.getElementById('chartKelanis').style.width = `${(areaSales['adamart kelanis'] / maxSales) * 100}%`;
+            // Update charts with animation
+            setTimeout(() => {
+                document.getElementById('chart73').style.width = maxSales > 0 ? `${(areaSales['adamart 73'] / maxSales) * 100}%` : '0%';
+                document.getElementById('chartInduksi').style.width = maxSales > 0 ? `${(areaSales['adamart induksi'] / maxSales) * 100}%` : '0%';
+                document.getElementById('chartKelanis').style.width = maxSales > 0 ? `${(areaSales['adamart kelanis'] / maxSales) * 100}%` : '0%';
+            }, 500);
 
+            // Update text
             document.getElementById('sales73').textContent = `Rp ${areaSales['adamart 73'].toLocaleString('id-ID')}`;
             document.getElementById('salesInduksi').textContent = `Rp ${areaSales['adamart induksi'].toLocaleString('id-ID')}`;
             document.getElementById('salesKelanis').textContent = `Rp ${areaSales['adamart kelanis'].toLocaleString('id-ID')}`;
@@ -526,71 +604,99 @@
             document.getElementById('transactionsInduksi').textContent = `${areaTransactions['adamart induksi']} transaksi`;
             document.getElementById('transactionsKelanis').textContent = `${areaTransactions['adamart kelanis']} transaksi`;
         }
-        
+
         function updateTopProducts() {
-            const areas = {
-                'adamart 73': 'topProducts73',
-                'adamart induksi': 'topProductsInduksi',
-                'adamart kelanis': 'topProductsKelanis'
+            const areaProducts = {
+                'adamart 73': {},
+                'adamart induksi': {},
+                'adamart kelanis': {}
             };
 
-            Object.keys(areas).forEach(area => {
-                const productSales = {};
-                filteredSales.filter(s => s.area === area).forEach(sale => {
-                    (sale.items || "").split(',').forEach(itemDetail => {
-                        const parts = itemDetail.trim().match(/(.+) x(\d+)/);
-                        if(parts && parts.length === 3) {
-                            const name = parts[1].trim();
-                            const qty = parseInt(parts[2].trim());
-                            productSales[name] = (productSales[name] || 0) + qty;
+            filteredData.sales.forEach(sale => {
+                if (sale.area && sale.items) {
+                    const items = sale.items.split(',');
+                    items.forEach(item => {
+                        const match = item.trim().match(/^(.+?)\s+x(\d+)$/);
+                        if (match) {
+                            const productName = match[1].trim();
+                            const quantity = parseInt(match[2]);
+                            areaProducts[sale.area][productName] = (areaProducts[sale.area][productName] || 0) + quantity;
                         }
                     });
-                });
-                
-                const sortedProducts = Object.entries(productSales)
+                }
+            });
+
+            // Update each area's top products
+            Object.keys(areaProducts).forEach(area => {
+                const products = areaProducts[area];
+                const sortedProducts = Object.entries(products)
                     .sort(([,a], [,b]) => b - a)
                     .slice(0, 3);
-                
-                const container = document.getElementById(areas[area]);
 
+                const containerId = area === 'adamart 73' ? 'topProducts73' : 
+                                 area === 'adamart induksi' ? 'topProductsInduksi' : 'topProductsKelanis';
+                
+                const container = document.getElementById(containerId);
+                
                 if (sortedProducts.length === 0) {
-                    container.innerHTML = '<p class="text-gray-500 text-sm">Tidak ada penjualan</p>';
+                    container.innerHTML = '<p class="text-gray-500 text-sm">Tidak ada data</p>';
                 } else {
                     container.innerHTML = sortedProducts.map(([product, quantity], index) => `
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between p-2 bg-white rounded border-l-4 ${index === 0 ? 'border-yellow-500' : index === 1 ? 'border-gray-400' : 'border-orange-500'}">
                             <div class="flex items-center space-x-2">
-                                <span class="text-xs font-bold">${index + 1}</span>
-                                <span class="text-sm">${product}</span>
+                                <span class="text-xs font-bold ${index === 0 ? 'text-yellow-600' : index === 1 ? 'text-gray-600' : 'text-orange-600'}">${index + 1}</span>
+                                <span class="text-sm font-medium">${product}</span>
                             </div>
-                            <span class="text-xs bg-gray-100 px-2 py-1 rounded">${quantity}</span>
+                            <span class="text-xs bg-gray-100 px-2 py-1 rounded font-medium">${quantity}</span>
                         </div>
                     `).join('');
                 }
             });
         }
 
-
         function updateLowStockAlerts() {
-            const areas = {
-                'adamart 73': { id: 'lowStock73', stockField: 'stock_73' },
-                'adamart induksi': { id: 'lowStockInduksi', stockField: 'stock_induksi' },
-                'adamart kelanis': { id: 'lowStockKelanis', stockField: 'stock_kelanis' }
+            const lowStockByArea = {
+                'adamart 73': [],
+                'adamart induksi': [],
+                'adamart kelanis': []
             };
-            
-            Object.values(areas).forEach(areaInfo => {
-                const lowStockProducts = allData.products
-                    .filter(p => p[areaInfo.stockField] < 10 && p[areaInfo.stockField] > 0)
-                    .sort((a,b) => a[areaInfo.stockField] - b[areaInfo.stockField])
-                    .slice(0, 5);
-                const container = document.getElementById(areaInfo.id);
 
-                if (lowStockProducts.length === 0) {
-                    container.innerHTML = '<p class="text-gray-500 text-sm">Semua stok aman</p>';
+            allData.products.forEach(product => {
+                if (product['Stok Area Kasir adamart 73'] < 10) {
+                    lowStockByArea['adamart 73'].push({
+                        name: product['Nama Produk'], 
+                        stock: product['Stok Area Kasir adamart 73']
+                    });
+                }
+                if (product['Stok Area Kasir adamart induksi'] < 10) {
+                    lowStockByArea['adamart induksi'].push({
+                        name: product['Nama Produk'], 
+                        stock: product['Stok Area Kasir adamart induksi']
+                    });
+                }
+                if (product['Stok Area Kasir adamart kelanis'] < 10) {
+                    lowStockByArea['adamart kelanis'].push({
+                        name: product['Nama Produk'], 
+                        stock: product['Stok Area Kasir adamart kelanis']
+                    });
+                }
+            });
+
+            // Update each area's low stock alerts
+            Object.keys(lowStockByArea).forEach(area => {
+                const products = lowStockByArea[area];
+                const containerId = area === 'adamart 73' ? 'lowStock73' : 
+                                 area === 'adamart induksi' ? 'lowStockInduksi' : 'lowStockKelanis';
+                
+                const container = document.getElementById(containerId);
+                
+                if (products.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-sm">Semua stok aman ✅</p>';
                 } else {
-                    container.innerHTML = lowStockProducts.map(product => `
+                    container.innerHTML = products.map(product => `
                         <div class="flex items-center justify-between bg-white p-2 rounded border-l-4 border-red-500">
                             <span class="text-sm font-medium">${product.name}</span>
-                            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">${product[areaInfo.stockField]} tersisa</span>
+                            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded font-medium">${product.stock} tersisa</span>
                         </div>
                     `).join('');
                 }
@@ -601,29 +707,46 @@
             const tbody = document.getElementById('transactionHistory');
             const searchTerm = document.getElementById('transactionSearch').value.toLowerCase();
             
-            let displaySales = filteredSales.filter(sale => 
-                (sale.items && sale.items.toLowerCase().includes(searchTerm)) ||
-                (sale.area && sale.area.toLowerCase().includes(searchTerm)) ||
-                (sale.method && sale.method.toLowerCase().includes(searchTerm))
-            );
-            
+            let displaySales = filteredData.sales;
+            if (searchTerm) {
+                displaySales = filteredData.sales.filter(sale => 
+                    (sale.items && sale.items.toLowerCase().includes(searchTerm)) ||
+                    (sale.area && sale.area.toLowerCase().includes(searchTerm)) ||
+                    (sale.method && sale.method.toLowerCase().includes(searchTerm))
+                );
+            }
+
             if (displaySales.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-500">Tidak ada transaksi yang cocok</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-500">Tidak ada data transaksi</td></tr>';
                 document.getElementById('transactionCount').textContent = '0';
                 return;
             }
 
-            tbody.innerHTML = displaySales.slice(0, 50).map(sale => `
-                <tr class="border-b hover:bg-gray-50">
+            tbody.innerHTML = displaySales.slice(0, 20).map(sale => `
+                <tr class="border-b hover:bg-gray-50 transition-colors">
                     <td class="p-3">
-                        <div class="text-sm">${new Date(sale.timestamp).toLocaleDateString('id-ID')}</div>
-                        <div class="text-xs text-gray-500">${new Date(sale.timestamp).toLocaleTimeString('id-ID')}</div>
+                        <div class="text-sm font-medium">${sale.timestamp ? new Date(sale.timestamp).toLocaleDateString('id-ID') : '-'}</div>
+                        <div class="text-xs text-gray-500">${sale.timestamp ? new Date(sale.timestamp).toLocaleTimeString('id-ID') : '-'}</div>
                     </td>
-                    <td class="p-3"><span class="px-2 py-1 bg-adamart-100 text-adamart-800 rounded text-xs">${sale.area}</span></td>
-                    <td class="p-3"><div class="text-sm max-w-xs truncate" title="${sale.items}">${sale.items}</div></td>
-                    <td class="p-3 font-medium">Rp ${sale.total.toLocaleString('id-ID')}</td>
-                    <td class="p-3"><span class="px-2 py-1 ${getPaymentMethodColor(sale.method)} rounded text-xs">${sale.method}</span></td>
-                    <td class="p-3"><button onclick="showTransactionDetail('${sale.timestamp}')" class="text-adamart-600 hover:text-adamart-700 text-xs">👁️ Detail</button></td>
+                    <td class="p-3">
+                        <span class="px-2 py-1 bg-adamart-100 text-adamart-800 rounded text-xs font-medium">
+                            ${sale.area || '-'}
+                        </span>
+                    </td>
+                    <td class="p-3">
+                        <div class="text-sm max-w-xs truncate" title="${sale.items || '-'}">${sale.items || '-'}</div>
+                    </td>
+                    <td class="p-3 font-medium">Rp ${(sale.total || 0).toLocaleString('id-ID')}</td>
+                    <td class="p-3">
+                        <span class="px-2 py-1 ${getPaymentMethodColor(sale.method)} rounded text-xs font-medium">
+                            ${sale.method || '-'}
+                        </span>
+                    </td>
+                    <td class="p-3">
+                        <button onclick="showTransactionDetail('${sale.timestamp}')" class="text-adamart-600 hover:text-adamart-700 text-xs font-medium">
+                            👁️ Detail
+                        </button>
+                    </td>
                 </tr>
             `).join('');
 
@@ -643,10 +766,13 @@
             const tbody = document.getElementById('stockTable');
             const searchTerm = document.getElementById('stockSearch').value.toLowerCase();
             
-            let displayProducts = allData.products.filter(product => 
-                product.name.toLowerCase().includes(searchTerm) ||
-                product.barcode.toLowerCase().includes(searchTerm)
-            );
+            let displayProducts = allData.products;
+            if (searchTerm) {
+                displayProducts = allData.products.filter(product => 
+                    (product['Nama Produk'] && product['Nama Produk'].toLowerCase().includes(searchTerm)) ||
+                    (product['Barcode'] && product['Barcode'].toLowerCase().includes(searchTerm))
+                );
+            }
             
             if (displayProducts.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-gray-500">Tidak ada data stok</td></tr>';
@@ -654,28 +780,49 @@
             }
 
             tbody.innerHTML = displayProducts.map(product => {
-                const totalStock = (product.stock_73 || 0) + (product.stock_induksi || 0) + (product.stock_kelanis || 0);
-                const isLowStock = product.stock_73 < 10 || product.stock_induksi < 10 || product.stock_kelanis < 10;
+                const stock73 = product['Stok Area Kasir adamart 73'] || 0;
+                const stockInduksi = product['Stok Area Kasir adamart induksi'] || 0;
+                const stockKelanis = product['Stok Area Kasir adamart kelanis'] || 0;
+                const totalStock = stock73 + stockInduksi + stockKelanis;
+                const isLowStock = stock73 < 10 || stockInduksi < 10 || stockKelanis < 10;
                 
                 return `
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="p-3"><div class="font-medium">${product.name}</div><div class="text-xs text-gray-500">${product.barcode}</div></td>
-                        <td class="p-3 font-medium">Rp ${product.price.toLocaleString('id-ID')}</td>
-                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(product.stock_73)} rounded text-xs">${product.stock_73 || 0}</span></td>
-                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(product.stock_induksi)} rounded text-xs">${product.stock_induksi || 0}</span></td>
-                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(product.stock_kelanis)} rounded text-xs">${product.stock_kelanis || 0}</span></td>
+                    <tr class="border-b hover:bg-gray-50 transition-colors">
+                        <td class="p-3">
+                            <div class="font-medium">${product['Nama Produk'] || '-'}</div>
+                            <div class="text-xs text-gray-500">${product['Barcode'] || '-'}</div>
+                        </td>
+                        <td class="p-3 font-medium">Rp ${(product['Harga'] || 0).toLocaleString('id-ID')}</td>
+                        <td class="p-3">
+                            <span class="px-2 py-1 ${getStockColor(stock73)} rounded text-xs font-medium">
+                                ${stock73}
+                            </span>
+                        </td>
+                        <td class="p-3">
+                            <span class="px-2 py-1 ${getStockColor(stockInduksi)} rounded text-xs font-medium">
+                                ${stockInduksi}
+                            </span>
+                        </td>
+                        <td class="p-3">
+                            <span class="px-2 py-1 ${getStockColor(stockKelanis)} rounded text-xs font-medium">
+                                ${stockKelanis}
+                            </span>
+                        </td>
                         <td class="p-3 font-medium">${totalStock}</td>
-                        <td class="p-3"><span class="px-2 py-1 ${totalStock < 10 ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} rounded text-xs">${totalStock < 10 ? '⚠️ Menipis' : '✅ Aman'}</span></td>
+                        <td class="p-3">
+                            <span class="px-2 py-1 ${isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} rounded text-xs font-medium">
+                                ${isLowStock ? '⚠️ Menipis' : '✅ Aman'}
+                            </span>
+                        </td>
                     </tr>
                 `;
             }).join('');
         }
 
         function getStockColor(stock) {
-            const s = stock || 0;
-            if (s > 20) return 'bg-green-100 text-green-800';
-            if (s >= 10) return 'bg-yellow-100 text-yellow-800';
-            if (s > 0) return 'bg-orange-100 text-orange-800';
+            if (stock > 20) return 'bg-green-100 text-green-800';
+            if (stock > 10) return 'bg-yellow-100 text-yellow-800';
+            if (stock > 0) return 'bg-orange-100 text-orange-800';
             return 'bg-red-100 text-red-800';
         }
 
@@ -688,16 +835,30 @@
             }
 
             tbody.innerHTML = allData.reports.map(report => {
-                const product = allData.products.find(p => p.barcode == report.barcode);
-                const lossValue = product ? (product.price || 0) * (report.quantity || 0) : 0;
+                const product = allData.products.find(p => p['Barcode'] === report.barcode);
+                const lossValue = product ? (product['Harga'] || 0) * (report.quantity || 0) : 0;
                 
                 return `
-                    <tr class="border-b hover:bg-gray-50">
-                        <td class="p-3"><div class="text-sm">${new Date(report.timestamp).toLocaleDateString('id-ID')}</div><div class="text-xs text-gray-500">${new Date(report.timestamp).toLocaleTimeString('id-ID')}</div></td>
-                        <td class="p-3"><div class="font-medium">${report.name}</div><div class="text-xs text-gray-500">${report.barcode}</div></td>
-                        <td class="p-3">${report.quantity}</td>
-                        <td class="p-3"><span class="px-2 py-1 ${report.reason === 'Expired' ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800'} rounded text-xs">${report.reason}</span></td>
-                        <td class="p-3"><span class="px-2 py-1 bg-adamart-100 text-adamart-800 rounded text-xs">${report.area}</span></td>
+                    <tr class="border-b hover:bg-gray-50 transition-colors">
+                        <td class="p-3">
+                            <div class="text-sm font-medium">${report.timestamp ? new Date(report.timestamp).toLocaleDateString('id-ID') : '-'}</div>
+                            <div class="text-xs text-gray-500">${report.timestamp ? new Date(report.timestamp).toLocaleTimeString('id-ID') : '-'}</div>
+                        </td>
+                        <td class="p-3">
+                            <div class="font-medium">${report.name || '-'}</div>
+                            <div class="text-xs text-gray-500">${report.barcode || '-'}</div>
+                        </td>
+                        <td class="p-3 font-medium">${report.quantity || 0}</td>
+                        <td class="p-3">
+                            <span class="px-2 py-1 ${report.reason === 'Expired' ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800'} rounded text-xs font-medium">
+                                ${report.reason || '-'}
+                            </span>
+                        </td>
+                        <td class="p-3">
+                            <span class="px-2 py-1 bg-adamart-100 text-adamart-800 rounded text-xs font-medium">
+                                ${report.area || '-'}
+                            </span>
+                        </td>
                         <td class="p-3 font-medium text-red-600">Rp ${lossValue.toLocaleString('id-ID')}</td>
                     </tr>
                 `;
@@ -709,64 +870,134 @@
                 e.preventDefault();
                 
                 const formData = {
-                    barcode: document.getElementById('barcode').value,
-                    name: document.getElementById('productName').value,
-                    price: parseInt(document.getElementById('price').value),
+                    barcode: document.getElementById('barcode').value.trim(),
+                    name: document.getElementById('productName').value.trim(),
+                    price: parseInt(document.getElementById('price').value) || 0,
                     area: document.getElementById('targetArea').value,
-                    quantity: parseInt(document.getElementById('stockAmount').value)
+                    quantity: parseInt(document.getElementById('stockAmount').value) || 0
                 };
 
-                const submitBtn = e.target.querySelector('button[type="submit"]');
-                submitBtn.disabled = true;
-                submitBtn.textContent = 'Menyimpan...';
+                if (!formData.barcode || !formData.name || !formData.area || formData.quantity <= 0) {
+                    showError('Mohon lengkapi semua field dengan benar');
+                    return;
+                }
 
                 try {
-                    const response = await fetch(APPS_SCRIPT_URL, {
+                    const response = await fetch(`${APPS_SCRIPT_URL}?action=update_stock`, {
                         method: 'POST',
-                        headers: {'Content-Type': 'application/json'},
-                        body: JSON.stringify({action: 'update_stock', data: formData})
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify(formData)
                     });
-                    
+
                     const result = await response.json();
                     if (result.success) {
-                        alert('✅ Stok berhasil diupdate! Data akan dimuat ulang.');
+                        showSuccess('Stok berhasil ditambahkan!');
                         this.reset();
-                        refreshData();
+                        loadManagerData(); // Refresh data
                     } else {
-                         throw new Error(result.error || 'Gagal mengupdate stok dari skrip.');
+                        throw new Error(result.error || 'Failed to update stock');
                     }
                 } catch (error) {
                     console.error('Error updating stock:', error);
-                    alert(`❌ Gagal mengupdate stok: ${error.message}`);
-                } finally {
-                    submitBtn.disabled = false;
-                    submitBtn.textContent = '💾 Simpan Produk/Stok';
+                    showError('Gagal menambah stok. Periksa koneksi internet.');
                 }
             });
         }
 
         function setupSearchFunctionality() {
-            document.getElementById('globalSearch').addEventListener('input', updateStockTable);
-            document.getElementById('transactionSearch').addEventListener('input', updateTransactionHistory);
-            document.getElementById('stockSearch').addEventListener('input', updateStockTable);
+            // Transaction search
+            document.getElementById('transactionSearch').addEventListener('input', function() {
+                updateTransactionHistory();
+            });
+
+            // Stock search
+            document.getElementById('stockSearch').addEventListener('input', function() {
+                updateStockTable();
+            });
+        }
+
+        function filterByArea() {
+            const selectedArea = document.getElementById('areaFilter').value;
+            
+            if (selectedArea === 'all') {
+                filteredData.sales = [...allData.sales];
+            } else {
+                filteredData.sales = allData.sales.filter(sale => sale.area === selectedArea);
+            }
+            
+            updateSummaryCards();
+            updateSalesChart();
+            updateTopProducts();
+            updateTransactionHistory();
+        }
+
+        function filterByDate() {
+            const selectedDate = document.getElementById('dateFilter').value;
+            const now = new Date();
+            let startDate;
+
+            switch(selectedDate) {
+                case 'today':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                    break;
+                case 'week':
+                    startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+                    break;
+                case 'month':
+                    startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                    break;
+                default:
+                    filteredData.sales = [...allData.sales];
+                    updateSummaryCards();
+                    updateSalesChart();
+                    updateTopProducts();
+                    updateTransactionHistory();
+                    return;
+            }
+
+            const selectedArea = document.getElementById('areaFilter').value;
+            let baseSales = selectedArea === 'all' ? allData.sales : allData.sales.filter(sale => sale.area === selectedArea);
+            
+            filteredData.sales = baseSales.filter(sale => sale.timestamp && new Date(sale.timestamp) >= startDate);
+            
+            updateSummaryCards();
+            updateSalesChart();
+            updateTopProducts();
+            updateTransactionHistory();
         }
 
         function showTransactionDetail(timestamp) {
             const transaction = allData.sales.find(sale => sale.timestamp === timestamp);
             if (transaction) {
-                alert(`Detail Transaksi:\n\nWaktu: ${new Date(transaction.timestamp).toLocaleString('id-ID')}\nArea: ${transaction.area}\nItems: ${transaction.items}\nTotal: Rp ${transaction.total.toLocaleString('id-ID')}\nMetode: ${transaction.method}`);
+                let detailText = `Detail Transaksi:\n\n`;
+                detailText += `Waktu: ${new Date(transaction.timestamp).toLocaleString('id-ID')}\n`;
+                detailText += `Area: ${transaction.area}\n`;
+                detailText += `Items: ${transaction.items}\n`;
+                detailText += `Total: Rp ${transaction.total.toLocaleString('id-ID')}\n`;
+                detailText += `Metode: ${transaction.method}`;
+                
+                if (transaction.method === 'Kasbon' && transaction.memberNumber) {
+                    detailText += `\n\nData Kasbon:\n`;
+                    detailText += `No. Induk Anggota: ${transaction.memberNumber}\n`;
+                    detailText += `No. Mine Permit: ${transaction.minePermit || '-'}`;
+                }
+                
+                alert(detailText);
             }
         }
 
         function exportTransactions() {
-            if (filteredSales.length === 0) {
-                alert("Tidak ada data transaksi untuk diekspor.");
+            if (filteredData.sales.length === 0) {
+                showError('Tidak ada data transaksi untuk diekspor');
                 return;
             }
+
             const csvContent = "data:text/csv;charset=utf-8," 
                 + "Waktu,Area,Items,Total,Metode\n"
-                + filteredSales.map(sale => 
-                    `"${new Date(sale.timestamp).toLocaleString('id-ID')}","${sale.area}","${(sale.items || "").replace(/"/g, '""')}","${sale.total}","${sale.method}"`
+                + filteredData.sales.map(sale => 
+                    `"${sale.timestamp ? new Date(sale.timestamp).toLocaleString('id-ID') : '-'}","${sale.area || '-'}","${sale.items || '-'}","${sale.total || 0}","${sale.method || '-'}"`
                 ).join("\n");
 
             const encodedUri = encodeURI(csvContent);
@@ -776,22 +1007,71 @@
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            
+            showSuccess('Data transaksi berhasil diekspor!');
+        }
+
+        function loadMoreTransactions() {
+            showError('Fitur load more akan tersedia setelah integrasi dengan Google Sheets');
         }
 
         function refreshData() {
             const icon = document.getElementById('refreshIcon');
-            icon.classList.add('animate-spin');
+            icon.style.transform = 'rotate(360deg)';
+            icon.style.transition = 'transform 0.5s';
             
-            loadManagerData().finally(() => {
-                setTimeout(() => icon.classList.remove('animate-spin'), 500);
-            });
+            setTimeout(() => {
+                icon.style.transform = 'rotate(0deg)';
+            }, 500);
+            
+            loadManagerData();
         }
 
-        function showLoading(show) {
-            document.getElementById('loadingState').classList.toggle('hidden', !show);
-            document.getElementById('dashboardContent').classList.toggle('hidden', show);
+        function showLoading(show, error = false) {
+            document.getElementById('loadingState').classList.toggle('hidden', !show || error);
+            document.getElementById('errorState').classList.toggle('hidden', !error);
+            document.getElementById('dashboardContent').classList.toggle('hidden', show || error);
+        }
+
+        function updateConnectionStatus(status) {
+            const statusElement = document.getElementById('connectionStatus');
+            switch(status) {
+                case 'online':
+                    statusElement.innerHTML = '🟢 Online';
+                    statusElement.className = 'text-green-300';
+                    break;
+                case 'offline':
+                    statusElement.innerHTML = '🔴 Offline';
+                    statusElement.className = 'text-red-300';
+                    break;
+                case 'connecting':
+                    statusElement.innerHTML = '🟡 Connecting...';
+                    statusElement.className = 'text-yellow-300';
+                    break;
+            }
+        }
+
+        function updateLastUpdate() {
+            document.getElementById('lastUpdate').textContent = `Update: ${new Date().toLocaleTimeString('id-ID')}`;
+        }
+
+        function showSuccess(message) {
+            document.getElementById('successMessage').textContent = message;
+            const toast = document.getElementById('successToast');
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+
+        function showError(message) {
+            document.getElementById('errorMessage').textContent = message;
+            const toast = document.getElementById('errorToast');
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 4000);
         }
     </script>
-</body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9905244e40bcf876',t:'MTc2MDc2MDE2My4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
-
