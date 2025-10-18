@@ -360,7 +360,7 @@
 
 
     <script>
-        // Ganti URL ini dengan URL Web App Google Apps Script Anda yang sudah di-deploy
+        // URL dan ID sudah dimasukkan sesuai data Anda
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztGJnMLgclP0ji0VnqXgI3M9nCHq2_6CU57xUQLCJmomCCqCj85I8YxcZJAMYnuE3wpA/exec';
         
         let allData = { products: [], sales: [], reports: [] };
@@ -396,15 +396,15 @@
 
         async function postData(action, payload) {
             try {
+                // Hapus mode 'no-cors' agar bisa menerima respons dari server
                 const response = await fetch(`${APPS_SCRIPT_URL}?action=${action}`, {
                     method: 'POST',
-                    mode: 'no-cors', // Diperlukan untuk Apps Script
-                    headers: { 'Content-Type': 'application/json' },
+                    // mode: 'no-cors', // Dihapus
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8', }, // Ubah header
                     body: JSON.stringify(payload)
                 });
-                
-                // Karena mode no-cors, kita tidak bisa membaca response. Asumsikan berhasil.
-                return { success: true }; 
+                 const result = await response.json();
+                 return result;
             } catch (error) {
                 console.error('Post Error:', error);
                 showAlert('Gagal Mengirim Data', `Terjadi kesalahan saat mengirim data ke server. Error: ${error.message}`, 'error');
@@ -476,6 +476,7 @@
 
             const productSales = {};
             filteredSales.forEach(sale => {
+                if(!sale.items) return;
                 const items = sale.items.split(',');
                 items.forEach(item => {
                     const match = item.trim().match(/^(.+?)\s+x(\d+)$/);
@@ -552,7 +553,7 @@
             const areaProducts = { 'adamart 73': {}, 'adamart induksi': {}, 'adamart kelanis': {} };
 
             filteredSales.forEach(sale => {
-                if (areaProducts.hasOwnProperty(sale.area)) {
+                if (areaProducts.hasOwnProperty(sale.area) && sale.items) {
                      const items = sale.items.split(',');
                      items.forEach(item => {
                          const match = item.trim().match(/^(.+?)\s+x(\d+)$/);
@@ -600,9 +601,9 @@
             const searchTerm = document.getElementById('transactionSearch').value.toLowerCase();
             
             const displaySales = filteredSales.filter(sale => 
-                sale.items.toLowerCase().includes(searchTerm) ||
-                sale.area.toLowerCase().includes(searchTerm) ||
-                sale.method.toLowerCase().includes(searchTerm)
+                (sale.items && sale.items.toLowerCase().includes(searchTerm)) ||
+                (sale.area && sale.area.toLowerCase().includes(searchTerm)) ||
+                (sale.method && sale.method.toLowerCase().includes(searchTerm))
             );
             
             document.getElementById('transactionCount').textContent = displaySales.length;
@@ -619,7 +620,7 @@
                         <div class="text-xs text-gray-500">${new Date(sale.timestamp).toLocaleTimeString('id-ID')}</div>
                     </td>
                     <td class="p-3"><span class="px-2 py-1 bg-adamart-100 text-adamart-800 rounded text-xs">${sale.area}</span></td>
-                    <td class="p-3"><div class="text-sm max-w-xs truncate" title="${sale.items}">${sale.items}</div></td>
+                    <td class="p-3"><div class="text-sm max-w-xs truncate" title="${sale.items}">${sale.items || ''}</div></td>
                     <td class="p-3 font-medium">${formatCurrency(sale.total)}</td>
                     <td class="p-3"><span class="px-2 py-1 rounded text-xs ${getPaymentMethodColor(sale.method)}">${sale.method}</span></td>
                 </tr>
@@ -643,7 +644,7 @@
 
             let displayProducts = allData.products;
             if (searchTerm) {
-                displayProducts = allData.products.filter(p => p.name.toLowerCase().includes(searchTerm) || p.barcode.toLowerCase().includes(searchTerm));
+                displayProducts = allData.products.filter(p => p.name.toLowerCase().includes(searchTerm) || p.barcode.toString().toLowerCase().includes(searchTerm));
             }
 
             if (displayProducts.length === 0) {
@@ -652,15 +653,15 @@
             }
 
             tbody.innerHTML = displayProducts.map(p => {
-                const totalStock = p.stock_73 + p.stock_induksi + p.stock_kelanis;
+                const totalStock = (p.stock_73 || 0) + (p.stock_induksi || 0) + (p.stock_kelanis || 0);
                 const isLowStock = p.stock_73 < 10 || p.stock_induksi < 10 || p.stock_kelanis < 10;
                 return `
                     <tr class="border-b hover:bg-gray-50">
                         <td class="p-3"><div class="font-medium">${p.name}</div><div class="text-xs text-gray-500">${p.barcode}</div></td>
                         <td class="p-3 font-medium">${formatCurrency(p.price)}</td>
-                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(p.stock_73)} rounded text-xs">${p.stock_73}</span></td>
-                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(p.stock_induksi)} rounded text-xs">${p.stock_induksi}</span></td>
-                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(p.stock_kelanis)} rounded text-xs">${p.stock_kelanis}</span></td>
+                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(p.stock_73)} rounded text-xs">${p.stock_73 || 0}</span></td>
+                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(p.stock_induksi)} rounded text-xs">${p.stock_induksi || 0}</span></td>
+                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(p.stock_kelanis)} rounded text-xs">${p.stock_kelanis || 0}</span></td>
                         <td class="p-3 font-medium">${totalStock}</td>
                         <td class="p-3"><span class="px-2 py-1 ${isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} rounded text-xs">${isLowStock ? '⚠️ Menipis' : '✅ Aman'}</span></td>
                     </tr>`;
@@ -668,21 +669,22 @@
         }
 
         function getStockColor(stock) {
-            if (stock > 20) return 'bg-green-100 text-green-800';
-            if (stock >= 10) return 'bg-yellow-100 text-yellow-800';
-            if (stock > 0) return 'bg-orange-100 text-orange-800';
+            const s = stock || 0;
+            if (s > 20) return 'bg-green-100 text-green-800';
+            if (s >= 10) return 'bg-yellow-100 text-yellow-800';
+            if (s > 0) return 'bg-orange-100 text-orange-800';
             return 'bg-red-100 text-red-800';
         }
 
         function updateDamageReports() {
             const tbody = document.getElementById('damageReports');
-            if (allData.reports.length === 0) {
+            if (!allData.reports || allData.reports.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-500">Tidak ada laporan</td></tr>';
                 return;
             }
 
             tbody.innerHTML = allData.reports.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)).map(report => {
-                const product = allData.products.find(p => p.barcode === report.barcode);
+                const product = allData.products.find(p => p.barcode.toString() === report.barcode.toString());
                 const lossValue = product ? product.price * report.quantity : 0;
                 return `
                     <tr class="border-b hover:bg-gray-50">
@@ -721,11 +723,14 @@
 
             const result = await postData('update_stock', formData);
             
-            // Karena mode no-cors, kita tidak bisa membaca response.
-            // Kita asumsikan berhasil dan muat ulang data untuk konfirmasi.
-            showAlert('Terkirim', 'Permintaan update stok telah dikirim. Data akan diperbarui setelah beberapa saat.', 'success');
-            document.getElementById('stockForm').reset();
-            setTimeout(loadManagerData, 2000); // Beri waktu server untuk update
+            if (result && result.success) {
+                showAlert('Berhasil', 'Permintaan update stok berhasil diproses. Data akan segera diperbarui.', 'success');
+                document.getElementById('stockForm').reset();
+                setTimeout(loadManagerData, 2000); // Beri waktu server untuk update
+            } else {
+                 showAlert('Gagal', result.error || 'Gagal mengirim data. Coba lagi.', 'error');
+            }
+
 
             btn.disabled = false;
             btn.textContent = '💾 Simpan Perubahan';
@@ -734,7 +739,7 @@
         function exportTransactions() {
             const csvContent = "data:text/csv;charset=utf-8," 
                 + "Waktu,Area,Items,Total,Metode\n"
-                + filteredSales.map(s => `"${new Date(s.timestamp).toLocaleString('id-ID')}","${s.area}","${s.items.replace(/"/g, '""')}","${s.total}","${s.method}"`).join("\n");
+                + filteredSales.map(s => `"${new Date(s.timestamp).toLocaleString('id-ID')}","${s.area}","${(s.items || '').replace(/"/g, '""')}","${s.total}","${s.method}"`).join("\n");
 
             const link = document.createElement("a");
             link.setAttribute("href", encodeURI(csvContent));
@@ -777,3 +782,4 @@
     </script>
 </body>
 </html>
+
