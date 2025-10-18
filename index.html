@@ -11,9 +11,15 @@
                 extend: {
                     colors: {
                         'adamart': {
-                            50: '#f0f9ff', 100: '#e0f2fe', 200: '#bae6fd',
-                            300: '#7dd3fc', 400: '#38bdf8', 500: '#0ea5e9',
-                            600: '#0284c7', 700: '#0369a1', 800: '#075985',
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            200: '#bae6fd',
+                            300: '#7dd3fc',
+                            400: '#38bdf8',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
                             900: '#0c4a6e'
                         }
                     }
@@ -22,16 +28,28 @@
         }
     </script>
     <style>
-        body { box-sizing: border-box; }
-        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
-        .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
-        .loading-pulse { animation: pulse 2s infinite; }
-        .chart-bar { transition: all 0.3s ease; }
-        .chart-bar:hover { transform: scaleY(1.1); }
-        .search-box { background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); }
-        .modal-bg { background-color: rgba(0,0,0,0.5); }
-        .modal-content { animation: slideUp 0.3s ease-out; }
-        @keyframes slideUp { from { opacity: 0; transform: translateY(30px); } to { opacity: 1; transform: translateY(0); } }
+        body {
+            box-sizing: border-box;
+        }
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .card-shadow {
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        }
+        .loading {
+            animation: pulse 2s infinite;
+        }
+        .chart-bar {
+            transition: all 0.3s ease;
+        }
+        .chart-bar:hover {
+            transform: scaleY(1.1);
+        }
+        .search-box {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
     </style>
 </head>
 <body class="bg-gray-50 min-h-full">
@@ -56,7 +74,7 @@
     <div class="container mx-auto p-4 space-y-6 pb-20">
         <!-- Loading State -->
         <div id="loadingState" class="text-center py-8">
-            <div class="loading-pulse bg-adamart-500 w-16 h-16 rounded-full mx-auto mb-4"></div>
+            <div class="loading bg-adamart-500 w-16 h-16 rounded-full mx-auto mb-4"></div>
             <p class="text-gray-600">Memuat data dari Google Sheets...</p>
         </div>
 
@@ -69,6 +87,7 @@
                         <div>
                             <p class="text-green-100 text-sm">Total Pendapatan</p>
                             <p id="totalRevenue" class="text-2xl font-bold">Rp 0</p>
+                            <p id="revenueGrowth" class="text-xs text-green-100">+0% dari kemarin</p>
                         </div>
                         <div class="text-3xl">💰</div>
                     </div>
@@ -79,6 +98,7 @@
                         <div>
                             <p class="text-blue-100 text-sm">Total Transaksi</p>
                             <p id="totalTransactions" class="text-2xl font-bold">0</p>
+                            <p id="transactionGrowth" class="text-xs text-blue-100">+0 transaksi hari ini</p>
                         </div>
                         <div class="text-3xl">📊</div>
                     </div>
@@ -119,10 +139,10 @@
                             <option value="adamart kelanis">Adamart Kelanis</option>
                         </select>
                         <select id="dateFilter" onchange="applyFilters()" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500">
-                            <option value="all">Semua Waktu</option>
                             <option value="today">Hari Ini</option>
-                            <option value="week">7 Hari Terakhir</option>
+                            <option value="week">Minggu Ini</option>
                             <option value="month">Bulan Ini</option>
+                            <option value="all">Semua Waktu</option>
                         </select>
                     </div>
                 </div>
@@ -244,15 +264,21 @@
                                 <th class="p-3 text-left">Items</th>
                                 <th class="p-3 text-left">Total</th>
                                 <th class="p-3 text-left">Metode</th>
+                                <th class="p-3 text-left">Detail</th>
                             </tr>
                         </thead>
                         <tbody id="transactionHistory">
-                            <tr><td colspan="5" class="p-8 text-center text-gray-500">Tidak ada data transaksi</td></tr>
+                            <tr>
+                                <td colspan="6" class="p-8 text-center text-gray-500">Tidak ada data transaksi</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
                 <div class="flex justify-between items-center mt-4">
                     <p class="text-sm text-gray-600">Menampilkan <span id="transactionCount">0</span> transaksi</p>
+                    <div class="flex space-x-2">
+                        <button onclick="loadMoreTransactions()" class="text-adamart-600 hover:text-adamart-700 text-sm">Muat Lebih Banyak</button>
+                    </div>
                 </div>
             </div>
 
@@ -260,23 +286,24 @@
             <div class="bg-white rounded-xl p-4 card-shadow">
                 <h3 class="text-lg font-semibold mb-4">📦 Manajemen Stok</h3>
                 
+                <!-- Form Tambah Produk/Stok -->
                 <div class="bg-adamart-50 p-4 rounded-lg mb-6">
-                    <h4 class="font-medium mb-3">➕ Tambah/Update Produk</h4>
+                    <h4 class="font-medium mb-3">➕ Tambah Produk/Stok Baru</h4>
                     <form id="stockForm" class="space-y-3">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
                             <div>
                                 <label for="barcode" class="block text-sm font-medium text-gray-700 mb-1">Barcode</label>
-                                <input type="text" id="barcode" placeholder="Scan atau masukkan barcode" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required>
+                                <input type="text" id="barcode" placeholder="Masukkan barcode" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required>
                             </div>
                             <div>
                                 <label for="productName" class="block text-sm font-medium text-gray-700 mb-1">Nama Produk</label>
-                                <input type="text" id="productName" placeholder="Nama akan terisi otomatis jika barcode ada" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required>
+                                <input type="text" id="productName" placeholder="Masukkan nama produk" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required>
                             </div>
                         </div>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
-                                <label for="price" class="block text-sm font-medium text-gray-700 mb-1">Harga Jual</label>
-                                <input type="number" id="price" placeholder="Harga jual baru" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required>
+                                <label for="price" class="block text-sm font-medium text-gray-700 mb-1">Harga</label>
+                                <input type="number" id="price" placeholder="Harga jual" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required>
                             </div>
                             <div>
                                 <label for="targetArea" class="block text-sm font-medium text-gray-700 mb-1">Area Tujuan</label>
@@ -288,20 +315,21 @@
                                 </select>
                             </div>
                             <div>
-                                <label for="stockAmount" class="block text-sm font-medium text-gray-700 mb-1">Jumlah Stok Ditambah</label>
+                                <label for="stockAmount" class="block text-sm font-medium text-gray-700 mb-1">Jumlah Stok</label>
                                 <input type="number" id="stockAmount" placeholder="Jumlah stok" class="w-full p-3 border rounded-lg focus:ring-2 focus:ring-adamart-500" required>
                             </div>
                         </div>
-                        <button type="submit" id="submitStockBtn" class="w-full bg-adamart-600 text-white py-3 rounded-lg hover:bg-adamart-700 transition-colors font-medium">
-                            💾 Simpan Perubahan
+                        <button type="submit" class="w-full bg-adamart-600 text-white py-3 rounded-lg hover:bg-adamart-700 transition-colors font-medium">
+                            💾 Simpan Produk/Stok
                         </button>
                     </form>
                 </div>
 
+                <!-- Tabel Stok -->
                 <div class="mb-4">
                     <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-3">
                         <h4 class="font-medium">📊 Data Stok Produk</h4>
-                        <input type="text" id="stockSearch" placeholder="Cari produk di tabel..." class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-adamart-500 mt-2 md:mt-0">
+                        <input type="text" id="stockSearch" placeholder="Cari produk..." class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-adamart-500 mt-2 md:mt-0">
                     </div>
                 </div>
                 <div class="overflow-x-auto">
@@ -310,15 +338,17 @@
                             <tr>
                                 <th class="p-3 text-left">Produk</th>
                                 <th class="p-3 text-left">Harga</th>
-                                <th class="p-3 text-left">Stok 73</th>
-                                <th class="p-3 text-left">Stok Induksi</th>
-                                <th class="p-3 text-left">Stok Kelanis</th>
+                                <th class="p-3 text-left">Adamart 73</th>
+                                <th class="p-3 text-left">Adamart Induksi</th>
+                                <th class="p-3 text-left">Adamart Kelanis</th>
                                 <th class="p-3 text-left">Total Stok</th>
                                 <th class="p-3 text-left">Status</th>
                             </tr>
                         </thead>
                         <tbody id="stockTable">
-                            <tr><td colspan="7" class="p-8 text-center text-gray-500">Tidak ada data stok</td></tr>
+                            <tr>
+                                <td colspan="7" class="p-8 text-center text-gray-500">Tidak ada data stok</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -326,7 +356,7 @@
 
             <!-- Laporan Barang Rusak/Expired -->
             <div class="bg-white rounded-xl p-4 card-shadow">
-                <h3 class="text-lg font-semibold mb-4">🚫 Laporan Barang Rusak/Expired</h3>
+                <h3 class="text-lg font-semibold mb-4">⚠️ Laporan Barang Rusak/Expired</h3>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
                         <thead class="bg-gray-50">
@@ -340,86 +370,79 @@
                             </tr>
                         </thead>
                         <tbody id="damageReports">
-                            <tr><td colspan="6" class="p-8 text-center text-gray-500">Tidak ada laporan</td></tr>
+                            <tr>
+                                <td colspan="6" class="p-8 text-center text-gray-500">Tidak ada laporan</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
     </div>
-    
-    <!-- Custom Alert Modal -->
-    <div id="alertModal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-50 p-4">
-        <div class="bg-white rounded-xl p-6 w-full max-w-sm text-center modal-content">
-            <div id="alertIcon" class="text-5xl mb-4"></div>
-            <h3 id="alertTitle" class="text-lg font-bold mb-2"></h3>
-            <p id="alertMessage" class="text-gray-600 mb-6"></p>
-            <button onclick="closeAlert()" class="bg-adamart-600 text-white px-6 py-2 rounded-lg hover:bg-adamart-700 transition-colors">Tutup</button>
-        </div>
-    </div>
-
 
     <script>
-        // URL dan ID sudah dimasukkan sesuai data Anda
+        // Configuration
         const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztGJnMLgclP0ji0VnqXgI3M9nCHq2_6CU57xUQLCJmomCCqCj85I8YxcZJAMYnuE3wpA/exec';
         
-        let allData = { products: [], sales: [], reports: [] };
-        let filteredSales = [];
+        let allData = {
+            products: [],
+            sales: [],
+            reports: []
+        };
 
+        let filteredData = {
+            sales: [],
+            products: []
+        };
+
+        // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             loadManagerData();
-            setupEventListeners();
+            setupStockForm();
+            setupSearchFunctionality();
         });
 
-        function setupEventListeners() {
-            document.getElementById('stockForm').addEventListener('submit', handleStockSubmit);
-            document.getElementById('barcode').addEventListener('input', handleBarcodeLookup);
-            document.getElementById('transactionSearch').addEventListener('input', () => updateTransactionHistory());
-            document.getElementById('stockSearch').addEventListener('input', () => updateStockTable());
-            document.getElementById('globalSearch').addEventListener('input', () => updateStockTable());
-        }
-        
-        async function fetchData(action) {
-            try {
-                const response = await fetch(`${APPS_SCRIPT_URL}?action=${action}`);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                const data = await response.json();
-                if (!data.success) throw new Error(data.error || 'Gagal mengambil data dari server.');
-                return data;
-            } catch (error) {
-                console.error('Fetch Error:', error);
-                showAlert('Gagal Terhubung', `Tidak dapat memuat data dari server. Pastikan URL Apps Script benar dan coba lagi. Error: ${error.message}`, 'error');
-                showLoading(false);
-                return null;
-            }
-        }
-
-        async function postData(action, payload) {
-            try {
-                // Hapus mode 'no-cors' agar bisa menerima respons dari server
-                const response = await fetch(`${APPS_SCRIPT_URL}?action=${action}`, {
-                    method: 'POST',
-                    // mode: 'no-cors', // Dihapus
-                    headers: { 'Content-Type': 'text/plain;charset=utf-8', }, // Ubah header
-                    body: JSON.stringify(payload)
-                });
-                 const result = await response.json();
-                 return result;
-            } catch (error) {
-                console.error('Post Error:', error);
-                showAlert('Gagal Mengirim Data', `Terjadi kesalahan saat mengirim data ke server. Error: ${error.message}`, 'error');
-                return { success: false, error: error.message };
-            }
-        }
-
         async function loadManagerData() {
-            showLoading(true);
-            const data = await fetchData('get_manager_data');
-            if (data) {
-                allData = data;
-                applyFilters();
+            try {
+                showLoading(true);
+                
+                const response = await fetch(`${APPS_SCRIPT_URL}?action=get_manager_data`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    allData = data;
+                    applyFilters(); // Apply initial filters
+                } else {
+                    throw new Error(data.error || 'Failed to load data');
+                }
+                
+                showLoading(false);
+                
+            } catch (error) {
+                console.error('Error loading data:', error);
+                alert('Gagal memuat data dari server. Memuat data demo.');
+                loadDemoData();
+                showLoading(false);
             }
-            showLoading(false);
+        }
+
+        function loadDemoData() {
+            allData = {
+                products: [
+                    {barcode: '001', name: 'Indomie Goreng', price: 3500, stock_73: 50, stock_induksi: 30, stock_kelanis: 25},
+                    {barcode: '002', name: 'Aqua 600ml', price: 3000, stock_73: 8, stock_induksi: 35, stock_kelanis: 20},
+                    {barcode: '003', name: 'Teh Botol Sosro', price: 4500, stock_73: 25, stock_induksi: 5, stock_kelanis: 15},
+                ],
+                sales: [
+                    {timestamp: new Date().toISOString(), area: 'adamart 73', total: 15000, method: 'Tunai', items: 'Indomie Goreng x2, Aqua 600ml x3'},
+                    {timestamp: new Date(Date.now() - 86400000).toISOString(), area: 'adamart induksi', total: 9000, method: 'QRIS', items: 'Teh Botol Sosro x2'},
+                ],
+                reports: [
+                    {timestamp: new Date().toISOString(), barcode: '001', name: 'Indomie Goreng', quantity: 2, reason: 'Expired', area: 'adamart 73'},
+                ]
+            };
+            
+            applyFilters();
         }
 
         function applyFilters() {
@@ -438,23 +461,21 @@
                 case 'month':
                     startDate = new Date(now.getFullYear(), now.getMonth(), 1);
                     break;
-                default:
-                    startDate = null; // all time
+                default: // 'all'
+                    startDate = new Date(0); // The beginning of time
+                    break;
             }
 
-            let salesToFilter = allData.sales;
+            let tempSales = allData.sales.filter(sale => new Date(sale.timestamp) >= startDate);
 
             if (selectedArea !== 'all') {
-                salesToFilter = salesToFilter.filter(sale => sale.area === selectedArea);
-            }
-
-            if (startDate) {
-                salesToFilter = salesToFilter.filter(sale => new Date(sale.timestamp) >= startDate);
+                tempSales = tempSales.filter(sale => sale.area === selectedArea);
             }
             
-            filteredSales = salesToFilter;
+            filteredData.sales = tempSales;
             updateDashboard();
         }
+
 
         function updateDashboard() {
             updateSummaryCards();
@@ -466,165 +487,156 @@
             updateDamageReports();
         }
 
-        function formatCurrency(value) {
-            return `Rp ${Number(value).toLocaleString('id-ID')}`;
-        }
-
         function updateSummaryCards() {
-            const totalRevenue = filteredSales.reduce((sum, sale) => sum + sale.total, 0);
-            const totalTransactions = filteredSales.length;
-
+            const totalRevenue = filteredData.sales.reduce((sum, sale) => sum + sale.total, 0);
+            const totalTransactions = filteredData.sales.length;
+            
             const productSales = {};
-            filteredSales.forEach(sale => {
-                if(!sale.items) return;
-                const items = sale.items.split(',');
-                items.forEach(item => {
-                    const match = item.trim().match(/^(.+?)\s+x(\d+)$/);
-                    if (match) {
-                        const productName = match[1].trim();
-                        const quantity = parseInt(match[2]);
-                        productSales[productName] = (productSales[productName] || 0) + quantity;
+            filteredData.sales.forEach(sale => {
+                sale.items.split(',').forEach(itemDetail => {
+                    const parts = itemDetail.split('x');
+                    if(parts.length === 2) {
+                        const name = parts[0].trim();
+                        const qty = parseInt(parts[1].trim());
+                        productSales[name] = (productSales[name] || 0) + qty;
                     }
                 });
             });
             
-            const topProductEntry = Object.entries(productSales).sort(([,a],[,b]) => b - a)[0];
-            const topProduct = topProductEntry ? topProductEntry[0] : '-';
-            const topProductSales = topProductEntry ? topProductEntry[1] : 0;
-            
-            const lowStockCount = allData.products.filter(p => p.stock_73 < 10 || p.stock_induksi < 10 || p.stock_kelanis < 10).length;
+            const topProduct = Object.keys(productSales).reduce((a, b) => 
+                productSales[a] > productSales[b] ? a : b, '-'
+            );
 
-            document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
+            const lowStockCount = allData.products.filter(product => 
+                product.stock_73 < 10 || product.stock_induksi < 10 || product.stock_kelanis < 10
+            ).length;
+
+            document.getElementById('totalRevenue').textContent = `Rp ${totalRevenue.toLocaleString('id-ID')}`;
             document.getElementById('totalTransactions').textContent = totalTransactions;
             document.getElementById('topProduct').textContent = topProduct;
-            document.getElementById('topProductSales').textContent = `${topProductSales} terjual`;
+            document.getElementById('topProductSales').textContent = `${productSales[topProduct] || 0} terjual`;
             document.getElementById('lowStockCount').textContent = lowStockCount;
         }
 
         function updateSalesChart() {
-            const areaSales = { 'adamart 73': 0, 'adamart induksi': 0, 'adamart kelanis': 0 };
-            const areaTransactions = { 'adamart 73': 0, 'adamart induksi': 0, 'adamart kelanis': 0 };
+            const areaSales = {'adamart 73': 0, 'adamart induksi': 0, 'adamart kelanis': 0};
+            const areaTransactions = {'adamart 73': 0, 'adamart induksi': 0, 'adamart kelanis': 0};
 
-            filteredSales.forEach(sale => {
-                if(areaSales.hasOwnProperty(sale.area)) {
+            filteredData.sales.forEach(sale => {
+                if(areaSales[sale.area] !== undefined) {
                     areaSales[sale.area] += sale.total;
                     areaTransactions[sale.area]++;
                 }
             });
 
-            const maxSales = Math.max(...Object.values(areaSales), 1); // Avoid division by zero
+            const maxSales = Math.max(1, ...Object.values(areaSales));
 
             document.getElementById('chart73').style.width = `${(areaSales['adamart 73'] / maxSales) * 100}%`;
             document.getElementById('chartInduksi').style.width = `${(areaSales['adamart induksi'] / maxSales) * 100}%`;
             document.getElementById('chartKelanis').style.width = `${(areaSales['adamart kelanis'] / maxSales) * 100}%`;
 
-            document.getElementById('sales73').textContent = formatCurrency(areaSales['adamart 73']);
-            document.getElementById('salesInduksi').textContent = formatCurrency(areaSales['adamart induksi']);
-            document.getElementById('salesKelanis').textContent = formatCurrency(areaSales['adamart kelanis']);
+            document.getElementById('sales73').textContent = `Rp ${areaSales['adamart 73'].toLocaleString('id-ID')}`;
+            document.getElementById('salesInduksi').textContent = `Rp ${areaSales['adamart induksi'].toLocaleString('id-ID')}`;
+            document.getElementById('salesKelanis').textContent = `Rp ${areaSales['adamart kelanis'].toLocaleString('id-ID')}`;
 
             document.getElementById('transactions73').textContent = `${areaTransactions['adamart 73']} transaksi`;
             document.getElementById('transactionsInduksi').textContent = `${areaTransactions['adamart induksi']} transaksi`;
             document.getElementById('transactionsKelanis').textContent = `${areaTransactions['adamart kelanis']} transaksi`;
         }
         
-        function renderProductList(containerId, products) {
-            const container = document.getElementById(containerId);
-            const sortedProducts = Object.entries(products).sort(([,a],[,b]) => b-a).slice(0, 3);
-            
-            if(sortedProducts.length === 0) {
-                 container.innerHTML = '<p class="text-gray-500 text-sm">Tidak ada data</p>';
-                 return;
-            }
-
-            container.innerHTML = sortedProducts.map(([product, quantity], index) => {
-                const colors = ['text-yellow-600', 'text-gray-600', 'text-orange-600'];
-                return `
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            <span class="text-xs font-bold ${colors[index] || 'text-gray-500'}">${index + 1}</span>
-                            <span class="text-sm">${product}</span>
-                        </div>
-                        <span class="text-xs bg-gray-100 px-2 py-1 rounded">${quantity}</span>
-                    </div>`;
-            }).join('');
-        }
-
         function updateTopProducts() {
-            const areaProducts = { 'adamart 73': {}, 'adamart induksi': {}, 'adamart kelanis': {} };
+            const areas = ['adamart 73', 'adamart induksi', 'adamart kelanis'];
+            areas.forEach(area => {
+                const productSales = {};
+                filteredData.sales.filter(s => s.area === area).forEach(sale => {
+                    sale.items.split(',').forEach(itemDetail => {
+                        const parts = itemDetail.split('x');
+                        if(parts.length === 2) {
+                            const name = parts[0].trim();
+                            const qty = parseInt(parts[1].trim());
+                            productSales[name] = (productSales[name] || 0) + qty;
+                        }
+                    });
+                });
+                
+                const sortedProducts = Object.entries(productSales)
+                    .sort(([,a], [,b]) => b - a)
+                    .slice(0, 3);
+                
+                const containerId = `topProducts${area.split(' ')[1].charAt(0).toUpperCase() + area.split(' ')[1].slice(1)}`;
+                const container = document.getElementById(containerId);
 
-            filteredSales.forEach(sale => {
-                if (areaProducts.hasOwnProperty(sale.area) && sale.items) {
-                     const items = sale.items.split(',');
-                     items.forEach(item => {
-                         const match = item.trim().match(/^(.+?)\s+x(\d+)$/);
-                         if (match) {
-                             const productName = match[1].trim();
-                             const quantity = parseInt(match[2]);
-                             areaProducts[sale.area][productName] = (areaProducts[sale.area][productName] || 0) + quantity;
-                         }
-                     });
-                }
-            });
-            
-            renderProductList('topProducts73', areaProducts['adamart 73']);
-            renderProductList('topProductsInduksi', areaProducts['adamart induksi']);
-            renderProductList('topProductsKelanis', areaProducts['adamart kelanis']);
-        }
-
-        function updateLowStockAlerts() {
-            const lowStockByArea = { 'adamart 73': [], 'adamart induksi': [], 'adamart kelanis': [] };
-
-            allData.products.forEach(p => {
-                if (p.stock_73 < 10 && p.stock_73 > 0) lowStockByArea['adamart 73'].push({name: p.name, stock: p.stock_73});
-                if (p.stock_induksi < 10 && p.stock_induksi > 0) lowStockByArea['adamart induksi'].push({name: p.name, stock: p.stock_induksi});
-                if (p.stock_kelanis < 10 && p.stock_kelanis > 0) lowStockByArea['adamart kelanis'].push({name: p.name, stock: p.stock_kelanis});
-            });
-
-            Object.entries(lowStockByArea).forEach(([area, products]) => {
-                const areaKey = area.replace('adamart ', '').replace(' ', '');
-                const container = document.getElementById(`lowStock${areaKey.charAt(0).toUpperCase() + areaKey.slice(1)}`);
-                if (products.length === 0) {
-                    container.innerHTML = '<p class="text-gray-500 text-sm">Semua stok aman</p>';
+                if (sortedProducts.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-sm">Tidak ada data</p>';
                 } else {
-                    container.innerHTML = products.map(p => `
-                        <div class="flex items-center justify-between bg-white p-2 rounded border-l-4 border-red-500">
-                            <span class="text-sm font-medium">${p.name}</span>
-                            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">${p.stock} tersisa</span>
+                    container.innerHTML = sortedProducts.map(([product, quantity], index) => `
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-2">
+                                <span class="text-xs font-bold">${index + 1}</span>
+                                <span class="text-sm">${product}</span>
+                            </div>
+                            <span class="text-xs bg-gray-100 px-2 py-1 rounded">${quantity}</span>
                         </div>
                     `).join('');
                 }
             });
         }
-        
+
+
+        function updateLowStockAlerts() {
+            const areas = {
+                'adamart 73': 'lowStock73',
+                'adamart induksi': 'lowStockInduksi',
+                'adamart kelanis': 'lowStockKelanis'
+            };
+            
+            Object.keys(areas).forEach(area => {
+                const stockField = `stock_${area.split(' ')[1]}`;
+                const lowStockProducts = allData.products.filter(p => p[stockField] < 10 && p[stockField] > 0).slice(0, 5);
+                const container = document.getElementById(areas[area]);
+
+                if (lowStockProducts.length === 0) {
+                    container.innerHTML = '<p class="text-gray-500 text-sm">Semua stok aman</p>';
+                } else {
+                    container.innerHTML = lowStockProducts.map(product => `
+                        <div class="flex items-center justify-between bg-white p-2 rounded border-l-4 border-red-500">
+                            <span class="text-sm font-medium">${product.name}</span>
+                            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded">${product[stockField]} tersisa</span>
+                        </div>
+                    `).join('');
+                }
+            });
+        }
+
         function updateTransactionHistory() {
             const tbody = document.getElementById('transactionHistory');
             const searchTerm = document.getElementById('transactionSearch').value.toLowerCase();
             
-            const displaySales = filteredSales.filter(sale => 
-                (sale.items && sale.items.toLowerCase().includes(searchTerm)) ||
-                (sale.area && sale.area.toLowerCase().includes(searchTerm)) ||
-                (sale.method && sale.method.toLowerCase().includes(searchTerm))
+            let displaySales = filteredData.sales.filter(sale => 
+                Object.values(sale).join(' ').toLowerCase().includes(searchTerm)
             );
             
-            document.getElementById('transactionCount').textContent = displaySales.length;
-
             if (displaySales.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500">Tidak ada data transaksi</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-500">Tidak ada data transaksi</td></tr>';
+                document.getElementById('transactionCount').textContent = '0';
                 return;
             }
 
-            tbody.innerHTML = displaySales.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)).map(sale => `
+            tbody.innerHTML = displaySales.slice(0, 20).map(sale => `
                 <tr class="border-b hover:bg-gray-50">
                     <td class="p-3">
                         <div class="text-sm">${new Date(sale.timestamp).toLocaleDateString('id-ID')}</div>
                         <div class="text-xs text-gray-500">${new Date(sale.timestamp).toLocaleTimeString('id-ID')}</div>
                     </td>
                     <td class="p-3"><span class="px-2 py-1 bg-adamart-100 text-adamart-800 rounded text-xs">${sale.area}</span></td>
-                    <td class="p-3"><div class="text-sm max-w-xs truncate" title="${sale.items}">${sale.items || ''}</div></td>
-                    <td class="p-3 font-medium">${formatCurrency(sale.total)}</td>
-                    <td class="p-3"><span class="px-2 py-1 rounded text-xs ${getPaymentMethodColor(sale.method)}">${sale.method}</span></td>
+                    <td class="p-3"><div class="text-sm max-w-xs truncate" title="${sale.items}">${sale.items}</div></td>
+                    <td class="p-3 font-medium">Rp ${sale.total.toLocaleString('id-ID')}</td>
+                    <td class="p-3"><span class="px-2 py-1 ${getPaymentMethodColor(sale.method)} rounded text-xs">${sale.method}</span></td>
+                    <td class="p-3"><button onclick="showTransactionDetail('${sale.timestamp}')" class="text-adamart-600 hover:text-adamart-700 text-xs">👁️ Detail</button></td>
                 </tr>
             `).join('');
+
+            document.getElementById('transactionCount').textContent = displaySales.length;
         }
 
         function getPaymentMethodColor(method) {
@@ -635,57 +647,58 @@
                 default: return 'bg-gray-100 text-gray-800';
             }
         }
-        
+
         function updateStockTable() {
             const tbody = document.getElementById('stockTable');
-            const globalSearchTerm = document.getElementById('globalSearch').value.toLowerCase();
-            const tableSearchTerm = document.getElementById('stockSearch').value.toLowerCase();
-            const searchTerm = globalSearchTerm || tableSearchTerm;
-
-            let displayProducts = allData.products;
-            if (searchTerm) {
-                displayProducts = allData.products.filter(p => p.name.toLowerCase().includes(searchTerm) || p.barcode.toString().toLowerCase().includes(searchTerm));
-            }
-
+            const searchTerm = document.getElementById('stockSearch').value.toLowerCase();
+            
+            let displayProducts = allData.products.filter(product => 
+                product.name.toLowerCase().includes(searchTerm) ||
+                product.barcode.toLowerCase().includes(searchTerm)
+            );
+            
             if (displayProducts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-gray-500">Produk tidak ditemukan</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-gray-500">Tidak ada data stok</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = displayProducts.map(p => {
-                const totalStock = (p.stock_73 || 0) + (p.stock_induksi || 0) + (p.stock_kelanis || 0);
-                const isLowStock = p.stock_73 < 10 || p.stock_induksi < 10 || p.stock_kelanis < 10;
+            tbody.innerHTML = displayProducts.map(product => {
+                const totalStock = product.stock_73 + product.stock_induksi + product.stock_kelanis;
+                const isLowStock = product.stock_73 < 10 || product.stock_induksi < 10 || product.stock_kelanis < 10;
+                
                 return `
                     <tr class="border-b hover:bg-gray-50">
-                        <td class="p-3"><div class="font-medium">${p.name}</div><div class="text-xs text-gray-500">${p.barcode}</div></td>
-                        <td class="p-3 font-medium">${formatCurrency(p.price)}</td>
-                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(p.stock_73)} rounded text-xs">${p.stock_73 || 0}</span></td>
-                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(p.stock_induksi)} rounded text-xs">${p.stock_induksi || 0}</span></td>
-                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(p.stock_kelanis)} rounded text-xs">${p.stock_kelanis || 0}</span></td>
+                        <td class="p-3"><div class="font-medium">${product.name}</div><div class="text-xs text-gray-500">${product.barcode}</div></td>
+                        <td class="p-3 font-medium">Rp ${product.price.toLocaleString('id-ID')}</td>
+                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(product.stock_73)} rounded text-xs">${product.stock_73}</span></td>
+                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(product.stock_induksi)} rounded text-xs">${product.stock_induksi}</span></td>
+                        <td class="p-3"><span class="px-2 py-1 ${getStockColor(product.stock_kelanis)} rounded text-xs">${product.stock_kelanis}</span></td>
                         <td class="p-3 font-medium">${totalStock}</td>
                         <td class="p-3"><span class="px-2 py-1 ${isLowStock ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} rounded text-xs">${isLowStock ? '⚠️ Menipis' : '✅ Aman'}</span></td>
-                    </tr>`;
+                    </tr>
+                `;
             }).join('');
         }
 
         function getStockColor(stock) {
-            const s = stock || 0;
-            if (s > 20) return 'bg-green-100 text-green-800';
-            if (s >= 10) return 'bg-yellow-100 text-yellow-800';
-            if (s > 0) return 'bg-orange-100 text-orange-800';
+            if (stock > 20) return 'bg-green-100 text-green-800';
+            if (stock > 10) return 'bg-yellow-100 text-yellow-800';
+            if (stock > 0) return 'bg-orange-100 text-orange-800';
             return 'bg-red-100 text-red-800';
         }
 
         function updateDamageReports() {
             const tbody = document.getElementById('damageReports');
+            
             if (!allData.reports || allData.reports.length === 0) {
                 tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-500">Tidak ada laporan</td></tr>';
                 return;
             }
 
-            tbody.innerHTML = allData.reports.sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)).map(report => {
-                const product = allData.products.find(p => p.barcode.toString() === report.barcode.toString());
+            tbody.innerHTML = allData.reports.map(report => {
+                const product = allData.products.find(p => p.barcode === report.barcode);
                 const lossValue = product ? product.price * report.quantity : 0;
+                
                 return `
                     <tr class="border-b hover:bg-gray-50">
                         <td class="p-3"><div class="text-sm">${new Date(report.timestamp).toLocaleDateString('id-ID')}</div><div class="text-xs text-gray-500">${new Date(report.timestamp).toLocaleTimeString('id-ID')}</div></td>
@@ -693,93 +706,89 @@
                         <td class="p-3">${report.quantity}</td>
                         <td class="p-3"><span class="px-2 py-1 ${report.reason === 'Expired' ? 'bg-orange-100 text-orange-800' : 'bg-red-100 text-red-800'} rounded text-xs">${report.reason}</span></td>
                         <td class="p-3"><span class="px-2 py-1 bg-adamart-100 text-adamart-800 rounded text-xs">${report.area}</span></td>
-                        <td class="p-3 font-medium text-red-600">${formatCurrency(lossValue)}</td>
-                    </tr>`;
+                        <td class="p-3 font-medium text-red-600">Rp ${lossValue.toLocaleString('id-ID')}</td>
+                    </tr>
+                `;
             }).join('');
         }
 
-        function handleBarcodeLookup() {
-            const barcode = document.getElementById('barcode').value;
-            const existingProduct = allData.products.find(p => p.barcode.toString() === barcode);
-            if(existingProduct) {
-                document.getElementById('productName').value = existingProduct.name;
-                document.getElementById('price').value = existingProduct.price;
-            }
+        function setupStockForm() {
+            document.getElementById('stockForm').addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const formData = {
+                    barcode: document.getElementById('barcode').value,
+                    name: document.getElementById('productName').value,
+                    price: parseInt(document.getElementById('price').value),
+                    area: document.getElementById('targetArea').value,
+                    quantity: parseInt(document.getElementById('stockAmount').value)
+                };
+
+                try {
+                    const response = await fetch(APPS_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({action: 'update_stock', data: formData})
+                    });
+                    
+                    alert('✅ Stok berhasil diupdate! Data akan diperbarui.');
+                    this.reset();
+                    loadManagerData();
+
+                } catch (error) {
+                    console.error('Error updating stock:', error);
+                    alert('❌ Gagal mengupdate stok. Silakan coba lagi.');
+                }
+            });
         }
 
-        async function handleStockSubmit(e) {
-            e.preventDefault();
-            const btn = document.getElementById('submitStockBtn');
-            btn.disabled = true;
-            btn.textContent = 'Menyimpan...';
+        function setupSearchFunctionality() {
+            document.getElementById('globalSearch').addEventListener('input', updateStockTable);
+            document.getElementById('transactionSearch').addEventListener('input', updateTransactionHistory);
+            document.getElementById('stockSearch').addEventListener('input', updateStockTable);
+        }
 
-            const formData = {
-                barcode: document.getElementById('barcode').value,
-                name: document.getElementById('productName').value,
-                price: parseFloat(document.getElementById('price').value),
-                area: document.getElementById('targetArea').value,
-                quantity: parseInt(document.getElementById('stockAmount').value)
-            };
-
-            const result = await postData('update_stock', formData);
-            
-            if (result && result.success) {
-                showAlert('Berhasil', 'Permintaan update stok berhasil diproses. Data akan segera diperbarui.', 'success');
-                document.getElementById('stockForm').reset();
-                setTimeout(loadManagerData, 2000); // Beri waktu server untuk update
-            } else {
-                 showAlert('Gagal', result.error || 'Gagal mengirim data. Coba lagi.', 'error');
+        function showTransactionDetail(timestamp) {
+            const transaction = allData.sales.find(sale => sale.timestamp === timestamp);
+            if (transaction) {
+                alert(`Detail Transaksi:\n\nWaktu: ${new Date(transaction.timestamp).toLocaleString('id-ID')}\nArea: ${transaction.area}\nItems: ${transaction.items}\nTotal: Rp ${transaction.total.toLocaleString('id-ID')}\nMetode: ${transaction.method}`);
             }
-
-
-            btn.disabled = false;
-            btn.textContent = '💾 Simpan Perubahan';
         }
 
         function exportTransactions() {
             const csvContent = "data:text/csv;charset=utf-8," 
                 + "Waktu,Area,Items,Total,Metode\n"
-                + filteredSales.map(s => `"${new Date(s.timestamp).toLocaleString('id-ID')}","${s.area}","${(s.items || '').replace(/"/g, '""')}","${s.total}","${s.method}"`).join("\n");
+                + filteredData.sales.map(sale => 
+                    `"${new Date(sale.timestamp).toLocaleString('id-ID')}","${sale.area}","${sale.items.replace(/"/g, '""')}","${sale.total}","${sale.method}"`
+                ).join("\n");
 
+            const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
-            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("href", encodedUri);
             link.setAttribute("download", `adamart_transactions_${new Date().toISOString().split('T')[0]}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
 
+        function loadMoreTransactions() {
+            alert('Fitur ini akan diimplementasikan di masa mendatang.');
+        }
+
         function refreshData() {
             const icon = document.getElementById('refreshIcon');
             icon.classList.add('animate-spin');
-            loadManagerData().then(() => {
+            
+            loadManagerData().finally(() => {
                 setTimeout(() => icon.classList.remove('animate-spin'), 500);
             });
         }
-        
+
         function showLoading(show) {
             document.getElementById('loadingState').classList.toggle('hidden', !show);
             document.getElementById('dashboardContent').classList.toggle('hidden', show);
         }
-
-        function showAlert(title, message, type = 'info') {
-            const modal = document.getElementById('alertModal');
-            document.getElementById('alertTitle').textContent = title;
-            document.getElementById('alertMessage').textContent = message;
-
-            const icon = document.getElementById('alertIcon');
-            if (type === 'success') icon.innerHTML = '✅';
-            else if (type === 'error') icon.innerHTML = '❌';
-            else icon.innerHTML = 'ℹ️';
-            
-            modal.classList.remove('hidden');
-        }
-
-        function closeAlert() {
-            document.getElementById('alertModal').classList.add('hidden');
-        }
-
     </script>
 </body>
 </html>
-
