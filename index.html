@@ -485,6 +485,31 @@
             document.getElementById('stockForm').addEventListener('submit', handleStockFormSubmit);
             document.getElementById('transactionSearch').addEventListener('input', () => { currentPage = 1; applyFilters(); });
             document.getElementById('stockSearch').addEventListener('input', updateStockTable);
+            // Menambahkan listener untuk auto-fill data produk
+            document.getElementById('barcode').addEventListener('input', autoFillProductDetails);
+        }
+
+        // Fungsi baru untuk auto-fill form produk
+        function autoFillProductDetails() {
+            const barcode = document.getElementById('barcode').value.trim();
+            const productNameInput = document.getElementById('productName');
+            const priceInput = document.getElementById('price');
+
+            if (!barcode) {
+                return; // Jangan lakukan apa-apa jika kosong
+            }
+
+            // Cari produk di master list (allData.products)
+            // Gunakan String() untuk perbandingan aman (jika barcode dari sheet adalah angka)
+            const product = allData.products.find(p => String(p.Barcode) === barcode);
+
+            if (product) {
+                // Jika produk ditemukan, isi kolom nama dan harga
+                productNameInput.value = product['Nama Produk'];
+                priceInput.value = product['Harga'];
+            }
+            // Jika tidak ditemukan, biarkan pengguna mengisinya secara manual (untuk produk baru)
+            // Kita tidak mengosongkan field jika tidak ketemu, agar pengguna bisa edit manual
         }
 
         async function loadManagerData() {
@@ -883,4 +908,5 @@
     </script>
 </body>
 </html>
+
 
