@@ -294,7 +294,28 @@
                 </div>
             </div>
             
-             <!-- Manajemen Stok -->
+            <!-- BARU: Produk Mendekati Expired -->
+            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
+                <h3 class="text-lg font-semibold mb-4 flex items-center">
+                    <span class="mr-2">⏳</span>
+                    Produk Mendekati Expired (Kurang dari 2 Bulan)
+                </h3>
+                <div class="border border-yellow-200 rounded-lg p-4 bg-yellow-50">
+                    <h4 class="font-semibold text-yellow-800 mb-3 flex items-center">
+                        <span class="mr-2">⚠️</span>
+                        Daftar Produk (Expiring Soon)
+                    </h4>
+                    <!-- 
+                        Data di sini akan menampilkan *semua* produk yang akan expired,
+                        berdasarkan tanggal expired paling cepat yang terdata di sistem.
+                    -->
+                    <div id="expiryAlerts" class="space-y-2 max-h-60 overflow-y-auto">
+                        <p class="text-gray-500 text-sm">Memuat data...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Manajemen Stok -->
             <div class="bg-white rounded-xl p-4 card-shadow slide-up">
                 <h3 class="text-lg font-semibold mb-4 flex items-center">
                     <span class="mr-2">📦</span>
@@ -341,6 +362,13 @@
                                        class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 focus:border-adamart-500" required>
                             </div>
                         </div>
+                        <!-- BARU: Input Tanggal Expired -->
+                        <div>
+                            <label for="expiryDate" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Expired (untuk batch ini)</label>
+                            <input type="date" id="expiryDate" 
+                                   class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 focus:border-adamart-500" required>
+                        </div>
+                        
                         <button type="submit" class="w-full bg-adamart-600 text-white py-3 rounded-lg hover:bg-adamart-700 transition-colors font-medium">
                             💾 Simpan Produk/Stok
                         </button>
@@ -507,6 +535,7 @@
                 // Jika produk ditemukan, isi kolom nama dan harga
                 productNameInput.value = product['Nama Produk'];
                 priceInput.value = product['Harga'];
+                // Kita tidak mengisi tanggal expired, karena itu input untuk batch baru
             }
             // Jika tidak ditemukan, biarkan pengguna mengisinya secara manual (untuk produk baru)
             // Kita tidak mengosongkan field jika tidak ketemu, agar pengguna bisa edit manual
@@ -584,6 +613,7 @@
             updateSalesChart();
             updateTopProducts();
             updateLowStockAlerts();
+            updateExpiryAlerts(); // <-- BARU DITAMBAHKAN
             updateTransactionHistory();
             updateStockTable();
             updateDamageReports();
@@ -653,7 +683,7 @@
                         sale.items.split(',').forEach(item => {
                              const match = item.trim().match(/^(.+?)\s+x(\d+)$/);
                              if(match) {
-                                 productSales[match[1].trim()] = (productSales[match[1].trim()] || 0) + parseInt(match[2]);
+                                  productSales[match[1].trim()] = (productSales[match[1].trim()] || 0) + parseInt(match[2]);
                              }
                         });
                     }
@@ -699,6 +729,65 @@
                     `).join('');
                 }
             });
+        }
+
+        // FUNGSI BARU: Untuk menampilkan peringatan produk akan expired
+        function updateExpiryAlerts() {
+            const container = document.getElementById('expiryAlerts');
+            if (!allData.products) {
+                container.innerHTML = '<p class="text-gray-500 text-sm">Data produk tidak ditemukan.</p>';
+                return;
+            }
+
+            const now = new Date();
+            const twoMonthsLater = new Date(now.getTime() + (60 * 24 * 60 * 60 * 1000)); // 60 hari
+
+            // Asumsi: allData.products memiliki kolom 'ExpiryDate' (format 'YYYY-MM-DD')
+            // yang diisi oleh Apps Script sebagai tanggal expired *paling cepat* dari produk tsb.
+            const expiringProducts = allData.products.filter(p => {
+                if (!p.ExpiryDate) return false; // Pastikan ada data expiry
+                
+                const expiry = new Date(p.ExpiryDate);
+                // Cek jika tanggalnya valid, dan berada di antara sekarang s/d 60 hari ke depan
+                return !isNaN(expiry) && expiry >= now && expiry <= twoMonthsLater;
+            });
+            
+            // Urutkan berdasarkan yang paling cepat expired
+            expiringProducts.sort((a, b) => new Date(a.ExpiryDate) - new Date(b.ExpiryDate));
+
+            if (expiringProducts.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-sm">Tidak ada produk yang akan expired dalam 2 bulan ✅</p>';
+            } else {
+                container.innerHTML = expiringProducts.map(p => {
+                    // Hitung total stok dari produk ini
+                    const s73 = p['Stok Area Kasir adamart 73'] || 0;
+                    const sInduksi = p['Stok Area Kasir adamart induksi'] || 0;
+                    const sKelanis = p['Stok Area Kasir adamart kelanis'] || 0;
+                    const totalStock = s73 + sInduksi + sKelanis;
+                    
+                    const expiry = new Date(p.ExpiryDate);
+                    const today = new Date();
+                    today.setHours(0,0,0,0); // reset time
+                    
+                    // Salin tanggal expiry dan reset jamnya untuk perbandingan hari
+                    const expiryDay = new Date(expiry.getFullYear(), expiry.getMonth(), expiry.getDate());
+                    
+                    const diffTime = Math.abs(expiryDay - today);
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    return `
+                        <div class="flex items-center justify-between bg-white p-2 rounded border-l-4 border-yellow-500">
+                            <div>
+                                <span class="text-sm font-medium">${p['Nama Produk']}</span>
+                                <span class="text-xs text-gray-500 block">Total Stok: ${totalStock}</span>
+                            </div>
+                            <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-bold">
+                                ${diffDays} hari lagi (${expiry.toLocaleDateString('id-ID')})
+                            </span>
+                        </div>
+                    `;
+                }).join('');
+            }
         }
         
         function updateTransactionHistory() {
@@ -822,11 +911,13 @@
                 name: document.getElementById('productName').value.trim(),
                 price: parseInt(document.getElementById('price').value) || 0,
                 area: document.getElementById('targetArea').value,
-                quantity: parseInt(document.getElementById('stockAmount').value) || 0
+                quantity: parseInt(document.getElementById('stockAmount').value) || 0,
+                expiryDate: document.getElementById('expiryDate').value // BARU
             };
 
-            if (!formData.barcode || !formData.name || !formData.area || formData.quantity <= 0) {
-                showError('Mohon lengkapi semua field dengan benar');
+            // BARU: Menambahkan validasi untuk expiryDate
+            if (!formData.barcode || !formData.name || !formData.area || formData.quantity <= 0 || !formData.expiryDate) {
+                showError('Mohon lengkapi semua field dengan benar (termasuk tanggal expired)');
                 return;
             }
 
@@ -838,7 +929,7 @@
                 const result = await response.json();
                 if (result.success) {
                     showSuccess('Stok berhasil diupdate!');
-                    this.reset();
+                    document.getElementById('stockForm').reset(); // Menggunakan reset() bawaan form
                     loadManagerData();
                 } else {
                     throw new Error(result.error || 'Gagal update stok');
@@ -908,5 +999,3 @@
     </script>
 </body>
 </html>
-
-
