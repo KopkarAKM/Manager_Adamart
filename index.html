@@ -775,11 +775,14 @@
                     const diffTime = Math.abs(expiryDay - today);
                     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
                     
+                    // BARU: Menambahkan ${p.ExpiryArea}
                     return `
                         <div class="flex items-center justify-between bg-white p-2 rounded border-l-4 border-yellow-500">
                             <div>
                                 <span class="text-sm font-medium">${p['Nama Produk']}</span>
                                 <span class="text-xs text-gray-500 block">Total Stok: ${totalStock}</span>
+                                <!-- BARIS DI BAWAH INI BARU -->
+                                <span class="text-xs text-adamart-700 font-medium block">Area: ${p.ExpiryArea || 'N/A'}</span>
                             </div>
                             <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-bold">
                                 ${diffDays} hari lagi (${expiry.toLocaleDateString('id-ID')})
