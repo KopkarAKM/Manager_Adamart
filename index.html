@@ -397,11 +397,14 @@
                                 <th class="p-3 text-left font-medium text-gray-700">Adamart Kelanis</th>
                                 <th class="p-3 text-left font-medium text-gray-700">Total Stok</th>
                                 <th class="p-3 text-left font-medium text-gray-700">Status</th>
+                                <!-- BARU: Kolom baru untuk tanggal expired -->
+                                <th class="p-3 text-left font-medium text-gray-700">Expired Tercepat</th>
                             </tr>
                         </thead>
                         <tbody id="stockTable">
                             <tr>
-                                <td colspan="7" class="p-8 text-center text-gray-500">Memuat data stok...</td>
+                                <!-- BARU: colspan diubah dari 7 menjadi 8 -->
+                                <td colspan="8" class="p-8 text-center text-gray-500">Memuat data stok...</td>
                             </tr>
                         </tbody>
                     </table>
@@ -860,7 +863,8 @@
             }
             
             if (products.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-gray-500">Tidak ada data stok</td></tr>';
+                // BARU: colspan diubah dari 7 menjadi 8
+                tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-gray-500">Tidak ada data stok</td></tr>';
                 return;
             }
 
@@ -869,7 +873,40 @@
                 const sInduksi = p['Stok Area Kasir adamart induksi'] || 0;
                 const sKelanis = p['Stok Area Kasir adamart kelanis'] || 0;
                 const total = s73 + sInduksi + sKelanis;
-                const isLow = total < 10;
+                
+                // BARU: Logika status yang direvisi untuk 3 kondisi
+                let statusText = 'Aman';
+                let statusClass = 'bg-green-100 text-green-800'; // Default: Aman
+
+                if (total === 0) {
+                    statusText = 'Kosong';
+                    statusClass = 'bg-gray-200 text-gray-700'; // Status Kosong
+                } else if (total < 10) {
+                    statusText = 'Menipis';
+                    statusClass = 'bg-red-100 text-red-800'; // Status Menipis
+                }
+                
+                // BARU: Logika untuk memformat tanggal expired
+                let expiryText = '<span class="text-gray-400">-</span>';
+                if (p.ExpiryDate) {
+                    const expiry = new Date(p.ExpiryDate);
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    
+                    // Salin tanggal expiry dan reset jamnya untuk perbandingan hari
+                    const expiryDay = new Date(expiry.getFullYear(), expiry.getMonth(), expiry.getDate());
+                    
+                    const diffTime = expiryDay - today; // Hitung selisih
+                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    
+                    let colorClass = 'text-gray-700'; // Default
+                    if (diffDays <= 60) colorClass = 'text-yellow-700 font-medium'; // Mendekati
+                    if (diffDays <= 30) colorClass = 'text-red-700 font-bold'; // Mendesak
+                    if (diffDays <= 0) colorClass = 'text-red-900 font-extrabold line-through'; // Sudah Lewat
+
+                    expiryText = `<span class="${colorClass}">${expiry.toLocaleDateString('id-ID')}</span>`;
+                }
+
                 return `
                     <tr class="border-b hover:bg-gray-50 transition-colors">
                         <td class="p-3"><div class="font-medium">${p['Nama Produk']}</div><div class="text-xs text-gray-500">${p['Barcode']}</div></td>
@@ -878,7 +915,10 @@
                         <td class="p-3">${sInduksi}</td>
                         <td class="p-3">${sKelanis}</td>
                         <td class="p-3 font-bold">${total}</td>
-                        <td class="p-3"><span class="px-2 py-1 ${isLow ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800'} text-xs font-medium rounded-full">${isLow ? 'Menipis' : 'Aman'}</span></td>
+                        <!-- BARU: Logika status telah diperbarui -->
+                        <td class="p-3"><span class="px-2 py-1 ${statusClass} text-xs font-medium rounded-full">${statusText}</span></td>
+                        <!-- BARU: Menampilkan data tanggal expired -->
+                        <td class="p-3 text-sm">${expiryText}</td>
                     </tr>
                 `
             }).join('');
