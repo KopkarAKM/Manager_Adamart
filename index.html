@@ -3,1042 +3,663 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adamart - Manager Dashboard</title>
+    <title>PayBoss Cafe - Dashboard Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        'adamart': {
-                            50: '#f0f9ff',
-                            100: '#e0f2fe',
-                            200: '#bae6fd',
-                            300: '#7dd3fc',
-                            400: '#38bdf8',
-                            500: '#0ea5e9',
-                            600: '#0284c7',
-                            700: '#0369a1',
-                            800: '#075985',
-                            900: '#0c4a6e'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
     <style>
-        body {
-            box-sizing: border-box;
+        body { box-sizing: border-box; }
+        .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .card-shadow { box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        .pulse-animation { animation: pulse 2s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        .notification-slide { animation: slideDown 0.3s ease-out; }
+        @keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .status-online { background-color: #10b981; animation: pulse 2s infinite; }
+        .status-offline { background-color: #ef4444; }
+        .status-wait { background-color: #a0aec0; } /* Warna untuk status Menunggu */
+        .status-break { background-color: #f59e0b; }
+        .chart-container { position: relative; height: 200px; }
+        .progress-bar { transition: width 0.3s ease; }
+        
+        /* Gaya untuk Roster Editor */
+        #roster-editor-table th, #roster-editor-table td {
+            border: 1px solid #e2e8f0;
+            padding: 0.5rem;
+            text-align: center;
+            min-width: 80px;
         }
-        .gradient-bg {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        #roster-editor-table th:first-child, #roster-editor-table td:first-child {
+            min-width: 150px;
+            text-align: left;
+            position: sticky;
+            left: 0;
+            background-color: #f7fafc;
         }
-        .card-shadow {
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+        #roster-editor-table th {
+            background-color: #edf2f7;
+            font-size: 0.75rem;
         }
-        .loading {
-            animation: pulse 2s infinite;
-        }
-        .chart-bar {
-            transition: all 0.5s ease-out;
-        }
-        .chart-bar:hover {
-            opacity: 0.8;
-        }
-        .fade-in {
-            animation: fadeIn 0.5s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .bounce-in {
-            animation: bounceIn 0.6s ease-out;
-        }
-        @keyframes bounceIn {
-            0% { transform: scale(0.3); opacity: 0; }
-            50% { transform: scale(1.05); }
-            70% { transform: scale(0.9); }
-            100% { transform: scale(1); opacity: 1; }
-        }
-        .slide-up {
-            animation: slideUp 0.4s ease-out;
-        }
-        @keyframes slideUp {
-            from { transform: translateY(30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+        #roster-editor-table select {
+            width: 100%;
+            border: 1px solid #cbd5e0;
+            border-radius: 0.375rem;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
         }
     </style>
 </head>
-<body class="bg-gray-50 min-h-screen">
-    <!-- Header -->
-    <header class="gradient-bg text-white p-4 sticky top-0 z-30">
-        <div class="flex items-center justify-between">
-            <div>
-                <h1 class="text-xl font-bold">🏪 Adamart Manager</h1>
-                <p class="text-sm opacity-90">Dashboard Manajemen Toko</p>
-            </div>
-            <div class="flex items-center space-x-2">
-                <button onclick="refreshData()" class="bg-white bg-opacity-20 p-2 rounded-lg hover:bg-opacity-30 transition-all">
-                    <span id="refreshIcon">🔄</span>
-                </button>
-                <div class="text-right text-xs">
-                    <div id="lastUpdate" class="opacity-75">Loading...</div>
-                    <div id="connectionStatus" class="text-green-300">🟢 Online</div>
+<body class="min-h-full bg-gray-50">
+    <div class="min-h-full">
+        <!-- Header -->
+        <header class="gradient-bg text-white p-4">
+            <div class="max-w-7xl mx-auto flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-white p-2 rounded-full"><span class="text-2xl">☕</span></div>
+                    <div>
+                        <h1 class="text-xl font-bold">PayBoss Cafe - Manager Dashboard</h1>
+                        <p class="text-sm opacity-90">Sistem Monitoring Kehadiran Karyawan</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm opacity-90">Manager,</p>
+                    <p class="font-semibold">Budi Santoso</p>
+                    <p class="text-xs opacity-75" id="currentDateTime">Memuat...</p>
                 </div>
             </div>
-        </div>
-    </header>
+        </header>
 
-    <div class="container mx-auto p-4 space-y-6 pb-20">
-        <!-- Loading State -->
-        <div id="loadingState" class="text-center py-12">
-            <div class="loading bg-adamart-500 w-16 h-16 rounded-full mx-auto mb-4"></div>
-            <p class="text-gray-600 text-lg">Memuat data dari Google Sheets...</p>
-            <p class="text-gray-500 text-sm mt-2">Mohon tunggu sebentar</p>
-        </div>
-
-        <!-- Error State -->
-        <div id="errorState" class="hidden text-center py-12">
-            <div class="text-6xl mb-4">⚠️</div>
-            <h3 class="text-xl font-bold text-gray-800 mb-2">Gagal Memuat Data</h3>
-            <p class="text-gray-600 mb-4">Tidak dapat terhubung ke Google Sheets</p>
-            <button onclick="refreshData()" class="bg-adamart-600 text-white px-6 py-3 rounded-lg hover:bg-adamart-700 transition-all">
-                🔄 Coba Lagi
-            </button>
-        </div>
-
-        <!-- Dashboard Content -->
-        <div id="dashboardContent" class="hidden space-y-6">
-            <!-- Summary Cards -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 fade-in">
-                <div class="bg-gradient-to-r from-green-400 to-green-600 text-white p-6 rounded-xl card-shadow">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-green-100 text-sm">Total Pendapatan</p>
-                            <p id="totalRevenue" class="text-2xl font-bold">Rp 0</p>
-                            <p id="revenueGrowth" class="text-xs text-green-100">Berdasarkan filter</p>
+        <main class="max-w-7xl mx-auto p-4 space-y-6">
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="bg-white rounded-lg card-shadow p-6">
+                    <div class="flex items-center">
+                        <div class="bg-green-100 p-3 rounded-full"><span class="text-green-600 text-xl">👥</span></div>
+                        <div class="ml-4">
+                            <p class="text-sm text-gray-600">Hadir Hari Ini</p>
+                            <p class="text-2xl font-bold text-gray-800" id="presentCount">0</p>
                         </div>
-                        <div class="text-4xl">💰</div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg card-shadow p-6">
+                    <div class="flex items-center">
+                        <div class="bg-red-100 p-3 rounded-full"><span class="text-red-600 text-xl">❌</span></div>
+                        <div class="ml-4">
+                            <p class="text-sm text-gray-600">Tidak Hadir</p>
+                            <p class="text-2xl font-bold text-gray-800" id="absentCount">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg card-shadow p-6">
+                    <div class="flex items-center">
+                        <div class="bg-yellow-100 p-3 rounded-full"><span class="text-yellow-600 text-xl">⏰</span></div>
+                        <div class="ml-4">
+                            <p class="text-sm text-gray-600">Terlambat</p>
+                            <p class="text-2xl font-bold text-gray-800" id="lateCount">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg card-shadow p-6">
+                    <div class="flex items-center">
+                        <div class="bg-blue-100 p-3 rounded-full"><span class="text-blue-600 text-xl">🕐</span></div>
+                        <div class="ml-4">
+                            <p class="text-sm text-gray-600">Sedang Kerja</p>
+                            <p class="text-2xl font-bold text-gray-800" id="workingCount">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Real-time Attendance Monitor -->
+            <div class="bg-white rounded-lg card-shadow p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center">
+                        <span class="mr-2">📊</span>Monitor Kehadiran Real-time
+                    </h2>
+                    <div class="flex space-x-2">
+                        <button onclick="loadDashboardData()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                            🔄 Refresh
+                        </button>
+                        <button onclick="showAnnouncementModal()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors text-sm">
+                            📢 Buat Pengumuman
+                        </button>
                     </div>
                 </div>
                 
-                <div class="bg-gradient-to-r from-blue-400 to-blue-600 text-white p-6 rounded-xl card-shadow">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-blue-100 text-sm">Total Transaksi</p>
-                            <p id="totalTransactions" class="text-2xl font-bold">0</p>
-                             <p id="transactionGrowth" class="text-xs text-blue-100">Berdasarkan filter</p>
-                        </div>
-                        <div class="text-4xl">📊</div>
-                    </div>
-                </div>
-                
-                <div class="bg-gradient-to-r from-purple-400 to-purple-600 text-white p-6 rounded-xl card-shadow">
-                    <div class="flex items-center justify-between">
-                        <div>
-                            <p class="text-purple-100 text-sm">Produk Terlaris</p>
-                            <p id="topProduct" class="text-lg font-bold">-</p>
-                            <p id="topProductSales" class="text-xs text-purple-100">0 terjual</p>
-                        </div>
-                        <div class="text-4xl">🏆</div>
-                    </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="text-left p-3 font-semibold">Foto</th>
+                                <th class="text-left p-3 font-semibold">Nama Karyawan</th>
+                                <th class="text-left p-3 font-semibold">Shift</th>
+                                <th class="text-left p-3 font-semibold">Jam Masuk</th>
+                                <th class="text-left p-3 font-semibold">Jam Keluar</th>
+                                <th class="text-left p-3 font-semibold">Durasi Kerja</th>
+                                <th class="text-left p-3 font-semibold">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceTable">
+                           <tr><td colspan="7" class="text-center p-4 text-gray-500">Memuat data...</td></tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
-            <!-- Filter Area -->
-            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between space-y-3 md:space-y-0">
-                    <h3 class="text-lg font-semibold flex items-center">
-                        <span class="mr-2">📍</span>
-                        Filter Data Penjualan
+            <!-- Shift Overview & Early Leave Requests -->
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- Shift Overview -->
+                <div class="bg-white rounded-lg card-shadow p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="mr-2">🕐</span> Ringkasan Shift Hari Ini
                     </h3>
-                    <div class="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-3">
-                        <select id="areaFilter" onchange="applyFilters()" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 bg-white">
-                            <option value="all">Semua Area</option>
-                            <option value="adamart 73">Adamart 73</option>
-                            <option value="adamart induksi">Adamart Induksi</option>
-                            <option value="adamart kelanis">Adamart Kelanis</option>
-                        </select>
-                        <select id="dateFilter" onchange="applyFilters()" class="p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 bg-white">
-                            <option value="today">Hari Ini</option>
-                            <option value="week">7 Hari Terakhir</option>
-                            <option value="month">Bulan Ini</option>
-                            <option value="all">Semua Waktu</option>
-                        </select>
+                    <div class="space-y-4" id="shiftOverviewContainer">
+                        <p class="text-gray-500">Memuat data shift...</p>
                     </div>
                 </div>
-            </div>
 
-            <!-- Sales Performance Chart -->
-            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
-                <h3 class="text-lg font-semibold mb-4 flex items-center">
-                    <span class="mr-2">📈</span>
-                    Performa Penjualan per Area
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="text-center">
-                        <div class="bg-blue-100 rounded-lg p-4 hover:bg-blue-200 transition-all">
-                            <div class="text-3xl mb-2">🏢</div>
-                            <h4 class="font-semibold text-blue-800">Adamart 73</h4>
-                            <div class="mt-3">
-                                <div class="bg-blue-200 rounded-full h-4 mb-2">
-                                    <div id="chart73" class="bg-blue-600 h-4 rounded-full chart-bar" style="width: 0%"></div>
-                                </div>
-                                <p id="sales73" class="text-sm text-blue-700 font-medium">Rp 0</p>
-                                <p id="transactions73" class="text-xs text-blue-600">0 transaksi</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="text-center">
-                        <div class="bg-green-100 rounded-lg p-4 hover:bg-green-200 transition-all">
-                            <div class="text-3xl mb-2">⚡</div>
-                            <h4 class="font-semibold text-green-800">Adamart Induksi</h4>
-                            <div class="mt-3">
-                                <div class="bg-green-200 rounded-full h-4 mb-2">
-                                    <div id="chartInduksi" class="bg-green-600 h-4 rounded-full chart-bar" style="width: 0%"></div>
-                                </div>
-                                <p id="salesInduksi" class="text-sm text-green-700 font-medium">Rp 0</p>
-                                <p id="transactionsInduksi" class="text-xs text-green-600">0 transaksi</p>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="text-center">
-                        <div class="bg-purple-100 rounded-lg p-4 hover:bg-purple-200 transition-all">
-                            <div class="text-3xl mb-2">🌟</div>
-                            <h4 class="font-semibold text-purple-800">Adamart Kelanis</h4>
-                            <div class="mt-3">
-                                <div class="bg-purple-200 rounded-full h-4 mb-2">
-                                    <div id="chartKelanis" class="bg-purple-600 h-4 rounded-full chart-bar" style="width: 0%"></div>
-                                </div>
-                                <p id="salesKelanis" class="text-sm text-purple-700 font-medium">Rp 0</p>
-                                <p id="transactionsKelanis" class="text-xs text-purple-600">0 transaksi</p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Top Products per Area -->
-            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
-                <h3 class="text-lg font-semibold mb-4 flex items-center">
-                    <span class="mr-2">🏆</span>
-                    Produk Terlaris per Area (berdasarkan filter)
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="border border-gray-200 rounded-lg p-4 bg-blue-50">
-                        <h4 class="font-semibold text-blue-800 mb-3 flex items-center">
-                            <span class="mr-2">🏢</span>
-                            Adamart 73
-                        </h4>
-                        <div id="topProducts73" class="space-y-2">
-                            <p class="text-gray-500 text-sm">Memuat data...</p>
-                        </div>
-                    </div>
-                    <div class="border border-gray-200 rounded-lg p-4 bg-green-50">
-                        <h4 class="font-semibold text-green-800 mb-3 flex items-center">
-                            <span class="mr-2">⚡</span>
-                            Adamart Induksi
-                        </h4>
-                        <div id="topProductsInduksi" class="space-y-2">
-                            <p class="text-gray-500 text-sm">Memuat data...</p>
-                        </div>
-                    </div>
-                    <div class="border border-gray-200 rounded-lg p-4 bg-purple-50">
-                        <h4 class="font-semibold text-purple-800 mb-3 flex items-center">
-                            <span class="mr-2">🌟</span>
-                            Adamart Kelanis
-                        </h4>
-                        <div id="topProductsKelanis" class="space-y-2">
-                            <p class="text-gray-500 text-sm">Memuat data...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Low Stock Alert -->
-            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
-                <h3 class="text-lg font-semibold mb-4 flex items-center">
-                    <span class="mr-2">⚠️</span>
-                    Produk Stok Menipis (&lt; 10)
-                </h3>
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div class="border border-red-200 rounded-lg p-4 bg-red-50">
-                        <h4 class="font-semibold text-red-800 mb-3 flex items-center">
-                            <span class="mr-2">🏢</span>
-                            Adamart 73
-                        </h4>
-                        <div id="lowStock73" class="space-y-2 max-h-40 overflow-y-auto">
-                            <p class="text-gray-500 text-sm">Memuat data...</p>
-                        </div>
-                    </div>
-                    <div class="border border-red-200 rounded-lg p-4 bg-red-50">
-                        <h4 class="font-semibold text-red-800 mb-3 flex items-center">
-                            <span class="mr-2">⚡</span>
-                            Adamart Induksi
-                        </h4>
-                        <div id="lowStockInduksi" class="space-y-2 max-h-40 overflow-y-auto">
-                            <p class="text-gray-500 text-sm">Memuat data...</p>
-                        </div>
-                    </div>
-                    <div class="border border-red-200 rounded-lg p-4 bg-red-50">
-                        <h4 class="font-semibold text-red-800 mb-3 flex items-center">
-                            <span class="mr-2">🌟</span>
-                            Adamart Kelanis
-                        </h4>
-                        <div id="lowStockKelanis" class="space-y-2 max-h-40 overflow-y-auto">
-                            <p class="text-gray-500 text-sm">Memuat data...</p>
-                        </div>
+                <!-- Early Leave Requests -->
+                <div class="bg-white rounded-lg card-shadow p-6">
+                    <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                        <span class="mr-2">⚠️</span> Permintaan Pulang Cepat
+                        <span id="pendingCountBadge" class="ml-2 bg-red-100 text-red-800 text-xs px-2 py-1 rounded-full hidden">0 pending</span>
+                    </h3>
+                    <div class="space-y-4" id="earlyLeaveRequests">
+                        <p class="text-gray-500">Memuat permintaan...</p>
                     </div>
                 </div>
             </div>
             
-            <!-- BARU: Produk Mendekati Expired -->
-            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
-                <h3 class="text-lg font-semibold mb-4 flex items-center">
-                    <span class="mr-2">⏳</span>
-                    Produk Mendekati Expired (Kurang dari 2 Bulan)
+             <!-- Weekly Attendance Report -->
+             <div class="bg-white rounded-lg card-shadow p-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span class="mr-2">📈</span> Laporan Kehadiran Mingguan
                 </h3>
-                <div class="border border-yellow-200 rounded-lg p-4 bg-yellow-50">
-                    <h4 class="font-semibold text-yellow-800 mb-3 flex items-center">
-                        <span class="mr-2">⚠️</span>
-                        Daftar Produk (Expiring Soon)
-                    </h4>
-                    <!-- 
-                        Data di sini akan menampilkan *semua* produk yang akan expired,
-                        berdasarkan tanggal expired paling cepat yang terdata di sistem.
-                    -->
-                    <div id="expiryAlerts" class="space-y-2 max-h-60 overflow-y-auto">
-                        <p class="text-gray-500 text-sm">Memuat data...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Manajemen Stok -->
-            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
-                <h3 class="text-lg font-semibold mb-4 flex items-center">
-                    <span class="mr-2">📦</span>
-                    Manajemen Stok
-                </h3>
-                
-                <!-- Form Tambah Produk/Stok -->
-                <div class="bg-gradient-to-r from-adamart-50 to-blue-50 p-4 rounded-lg mb-6 border border-adamart-200">
-                    <h4 class="font-medium mb-3 flex items-center text-adamart-800">
-                        <span class="mr-2">➕</span>
-                        Tambah Produk/Stok Baru
-                    </h4>
-                    <form id="stockForm" class="space-y-3">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                            <div>
-                                <label for="barcode" class="block text-sm font-medium text-gray-700 mb-1">Barcode</label>
-                                <input type="text" id="barcode" placeholder="Masukkan barcode" 
-                                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 focus:border-adamart-500" required>
-                            </div>
-                            <div>
-                                <label for="productName" class="block text-sm font-medium text-gray-700 mb-1">Nama Produk</label>
-                                <input type="text" id="productName" placeholder="Masukkan nama produk" 
-                                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 focus:border-adamart-500" required>
-                            </div>
-                        </div>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                            <div>
-                                <label for="price" class="block text-sm font-medium text-gray-700 mb-1">Harga</label>
-                                <input type="number" id="price" placeholder="Harga jual" min="0" 
-                                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 focus:border-adamart-500" required>
-                            </div>
-                            <div>
-                                <label for="targetArea" class="block text-sm font-medium text-gray-700 mb-1">Area Tujuan</label>
-                                <select id="targetArea" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 focus:border-adamart-500 bg-white" required>
-                                    <option value="">Pilih Area</option>
-                                    <option value="adamart 73">Adamart 73</option>
-                                    <option value="adamart induksi">Adamart Induksi</option>
-                                    <option value="adamart kelanis">Adamart Kelanis</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label for="stockAmount" class="block text-sm font-medium text-gray-700 mb-1">Jumlah Stok</label>
-                                <input type="number" id="stockAmount" placeholder="Jumlah stok" min="1" 
-                                       class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 focus:border-adamart-500" required>
-                            </div>
-                        </div>
-                        <!-- BARU: Input Tanggal Expired -->
-                        <div>
-                            <label for="expiryDate" class="block text-sm font-medium text-gray-700 mb-1">Tanggal Expired (untuk batch ini)</label>
-                            <input type="date" id="expiryDate" 
-                                   class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-adamart-500 focus:border-adamart-500" required>
-                        </div>
-                        
-                        <button type="submit" class="w-full bg-adamart-600 text-white py-3 rounded-lg hover:bg-adamart-700 transition-colors font-medium">
-                            💾 Simpan Produk/Stok
-                        </button>
-                    </form>
-                </div>
-
-                <!-- Tabel Stok -->
-                <div class="mb-4">
-                    <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-3">
-                        <h4 class="font-medium flex items-center">
-                            <span class="mr-2">📊</span>
-                            Data Stok Produk
-                        </h4>
-                        <input type="text" id="stockSearch" placeholder="Cari produk..." 
-                               class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-adamart-500 mt-2 md:mt-0 w-full md:w-48">
-                    </div>
-                </div>
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="p-3 text-left font-medium text-gray-700">Produk</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Harga</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Adamart 73</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Adamart Induksi</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Adamart Kelanis</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Total Stok</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Status</th>
-                                <!-- BARU: Kolom baru untuk tanggal expired -->
-                                <th class="p-3 text-left font-medium text-gray-700">Expired Tercepat</th>
+                        <thead>
+                            <tr class="bg-gray-50">
+                                <th class="text-left p-3 font-semibold">Nama Karyawan</th>
+                                <th class="text-center p-3 font-semibold">Sen</th>
+                                <th class="text-center p-3 font-semibold">Sel</th>
+                                <th class="text-center p-3 font-semibold">Rab</th>
+                                <th class="text-center p-3 font-semibold">Kam</th>
+                                <th class="text-center p-3 font-semibold">Jum</th>
+                                <th class="text-center p-3 font-semibold">Sab</th>
+                                <th class="text-center p-3 font-semibold">Min</th>
+                                <th class="text-center p-3 font-semibold">Total Jam</th>
                             </tr>
                         </thead>
-                        <tbody id="stockTable">
-                            <tr>
-                                <!-- BARU: colspan diubah dari 7 menjadi 8 -->
-                                <td colspan="8" class="p-8 text-center text-gray-500">Memuat data stok...</td>
-                            </tr>
+                        <tbody id="weeklyReportTable">
+                           <tr><td colspan="9" class="text-center p-4 text-gray-500">Memuat laporan mingguan...</td></tr>
                         </tbody>
                     </table>
                 </div>
+                 <div class="mt-4 text-xs text-gray-600">
+                    <p>Keterangan: ✅ Hadir | ⚠️ Terlambat | 🔴 Tidak Hadir | - Libur</p>
+                </div>
             </div>
-
-            <!-- Riwayat Transaksi -->
-            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between mb-4">
-                    <h3 class="text-lg font-semibold flex items-center">
-                        <span class="mr-2">📋</span>
-                        Riwayat Transaksi
-                    </h3>
-                    <div class="flex items-center space-x-2 mt-2 md:mt-0">
-                        <input type="text" id="transactionSearch" placeholder="Cari transaksi..." 
-                               class="p-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-adamart-500 w-full md:w-48">
-                        <button onclick="exportTransactions()" class="bg-adamart-600 text-white px-4 py-2 rounded-lg hover:bg-adamart-700 transition-colors text-sm whitespace-nowrap">
-                            📊 Export
+            
+            <!-- ======================================= -->
+            <!-- MANAJEMEN ROSTER KERJA (BARU)           -->
+            <!-- ======================================= -->
+            <div class="bg-white rounded-lg card-shadow p-6">
+                <div class="flex flex-col md:flex-row items-center justify-between mb-6">
+                    <h2 class="text-xl font-bold text-gray-800 flex items-center mb-4 md:mb-0">
+                        <span class="mr-2">📅</span>Manajemen Roster Kerja
+                    </h2>
+                    <div class="flex items-center space-x-2">
+                        <select id="roster-month" class="border border-gray-300 rounded-lg p-2">
+                            <!-- Options generated by JS -->
+                        </select>
+                        <select id="roster-year" class="border border-gray-300 rounded-lg p-2">
+                            <!-- Options generated by JS -->
+                        </select>
+                        <button onclick="loadRosterEditor()" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+                            Muat Roster
+                        </button>
+                        <button onclick="saveRoster()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                            Simpan Roster
                         </button>
                     </div>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="p-3 text-left font-medium text-gray-700">Waktu</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Area</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Items</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Total</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Metode</th>
-                            </tr>
-                        </thead>
-                        <tbody id="transactionHistory">
-                            <tr>
-                                <td colspan="5" class="p-8 text-center text-gray-500">Memuat data transaksi...</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                 <div class="flex justify-between items-center mt-4">
-                    <p class="text-sm text-gray-600">Menampilkan <span id="transactionCount">0</span> dari <span id="totalTransactionCount">0</span> transaksi</p>
-                    <div id="paginationControls" class="flex items-center space-x-2">
-                         <!-- Pagination buttons will be added here -->
-                    </div>
+                <div id="roster-editor-container" class="overflow-x-auto">
+                    <p class="text-center text-gray-500">Pilih bulan dan tahun, lalu klik "Muat Roster" untuk mengedit.</p>
                 </div>
             </div>
 
-            <!-- Laporan Barang Rusak/Expired -->
-            <div class="bg-white rounded-xl p-4 card-shadow slide-up">
-                <h3 class="text-lg font-semibold mb-4 flex items-center">
-                    <span class="mr-2">⚠️</span>
-                    Laporan Barang Rusak/Expired
+
+            <!-- ======================================= -->
+            <!-- PROFIL KARYAWAN (DENGAN DATA LENGKAP)   -->
+            <!-- ======================================= -->
+            <div class="bg-white rounded-lg card-shadow p-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-4 flex items-center">
+                    <span class="mr-2">👤</span>Profil Karyawan
                 </h3>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="bg-gray-50">
-                            <tr>
-                                <th class="p-3 text-left font-medium text-gray-700">Waktu</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Produk</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Jumlah</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Keterangan</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Area</th>
-                                <th class="p-3 text-left font-medium text-gray-700">Nilai Kerugian</th>
-                            </tr>
-                        </thead>
-                        <tbody id="damageReports">
-                            <tr>
-                                <td colspan="6" class="p-8 text-center text-gray-500">Memuat laporan...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div id="profil-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Profil Karyawan akan dimuat di sini -->
+                    <p class="col-span-full text-gray-500">Memuat profil...</p>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Success Toast -->
-    <div id="successToast" class="hidden fixed top-4 right-4 z-50 bg-green-500 text-white p-4 rounded-lg shadow-lg bounce-in">
-        <div class="flex items-center space-x-2">
-            <span class="text-xl">✅</span>
-            <span id="successMessage">Berhasil!</span>
-        </div>
-    </div>
+        </main>
 
-    <!-- Error Toast -->
-    <div id="errorToast" class="hidden fixed top-4 right-4 z-50 bg-red-500 text-white p-4 rounded-lg shadow-lg bounce-in">
-        <div class="flex items-center space-x-2">
-            <span class="text-xl">❌</span>
-            <span id="errorMessage">Terjadi kesalahan!</span>
+        <!-- Announcement Modal -->
+        <div id="announcementModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-lg max-w-md w-full p-6">
+                <h3 class="text-lg font-bold text-gray-800 mb-4">Buat Pengumuman</h3>
+                <form onsubmit="sendAnnouncement(event)">
+                    <div class="mb-4">
+                        <label for="announcementTitle" class="block text-sm font-medium text-gray-700 mb-2">Judul Pengumuman</label>
+                        <input type="text" id="announcementTitle" class="w-full border border-gray-300 rounded-lg p-3" placeholder="Contoh: Rapat Tim Besok" required>
+                    </div>
+                    <div class="mb-4">
+                        <label for="announcementMessage" class="block text-sm font-medium text-gray-700 mb-2">Pesan</label>
+                        <textarea id="announcementMessage" rows="4" class="w-full border border-gray-300 rounded-lg p-3" placeholder="Tulis pesan pengumuman..." required></textarea>
+                    </div>
+                    <div class="mb-6">
+                        <label for="announcementTarget" class="block text-sm font-medium text-gray-700 mb-2">Kirim ke:</label>
+                        <select id="announcementTarget" class="w-full border border-gray-300 rounded-lg p-3">
+                            <option value="Semua">Semua Karyawan</option>
+                            <option value="Pagi">Shift Pagi saja</option>
+                            <option value="Siang">Shift Siang saja</option>
+                            <option value="Malam">Shift Malam saja</option>
+                        </select>
+                    </div>
+                    <div class="flex space-x-3">
+                        <button type="button" onclick="closeAnnouncementModal()" class="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors">
+                            Batal
+                        </button>
+                        <button type="submit" class="flex-1 bg-green-600 text-white py-2 px-4 rounded-lg hover:bg-green-700 transition-colors">
+                            Kirim Pengumuman
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Success Modal -->
+        <div id="successModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center p-4 z-50">
+            <div class="bg-white rounded-lg max-w-sm w-full p-6 text-center">
+                <div class="text-green-500 text-5xl mb-4">✅</div>
+                <h3 class="text-lg font-bold text-gray-800 mb-2" id="successTitle">Berhasil!</h3>
+                <p class="text-gray-600 mb-4" id="successMessage">Aksi berhasil dilakukan</p>
+                <button onclick="closeSuccessModal()" class="bg-green-600 text-white py-2 px-6 rounded-lg hover:bg-green-700 transition-colors">
+                    OK
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
-        // Configuration - URL Google Apps Script Adamart
-        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbztGJnMLgclP0ji0VnqXgI3M9nCHq2_6CU57xUQLCJmomCCqCj85I8YxcZJAMYnuE3wpA/exec';
-        
-        let allData = { products: [], sales: [], reports: [] };
-        let filteredSales = [];
-        
-        const TRANSACTIONS_PER_PAGE = 20;
-        let currentPage = 1;
+        const GAS_URL = "https://script.google.com/macros/s/AKfycbzNtA8PdlbZQ_Jw_5JNLlDnhT-EYq-ylpmMrFIgedqGObtfcGVkpV50DSS4AGxrDjsE/exec";
+        const SHIFT_TYPES = ["Libur", "Pagi", "Siang", "Malam"]; // Tipe shift untuk editor
 
-        document.addEventListener('DOMContentLoaded', function() {
-            loadManagerData();
-            setupEventListeners();
-        });
-
-        function setupEventListeners() {
-            document.getElementById('stockForm').addEventListener('submit', handleStockFormSubmit);
-            document.getElementById('transactionSearch').addEventListener('input', () => { currentPage = 1; applyFilters(); });
-            document.getElementById('stockSearch').addEventListener('input', updateStockTable);
-            // Menambahkan listener untuk auto-fill data produk
-            document.getElementById('barcode').addEventListener('input', autoFillProductDetails);
+        function updateDateTime() {
+            const now = new Date();
+            const dateTimeString = now.toLocaleDateString('id-ID', { 
+                weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' 
+            }) + ' - ' + now.toLocaleTimeString('id-ID');
+            document.getElementById('currentDateTime').textContent = dateTimeString;
         }
 
-        // Fungsi baru untuk auto-fill form produk
-        function autoFillProductDetails() {
-            const barcode = document.getElementById('barcode').value.trim();
-            const productNameInput = document.getElementById('productName');
-            const priceInput = document.getElementById('price');
-
-            if (!barcode) {
-                return; // Jangan lakukan apa-apa jika kosong
-            }
-
-            // Cari produk di master list (allData.products)
-            // Gunakan String() untuk perbandingan aman (jika barcode dari sheet adalah angka)
-            const product = allData.products.find(p => String(p.Barcode) === barcode);
-
-            if (product) {
-                // Jika produk ditemukan, isi kolom nama dan harga
-                productNameInput.value = product['Nama Produk'];
-                priceInput.value = product['Harga'];
-                // Kita tidak mengisi tanggal expired, karena itu input untuk batch baru
-            }
-            // Jika tidak ditemukan, biarkan pengguna mengisinya secara manual (untuk produk baru)
-            // Kita tidak mengosongkan field jika tidak ketemu, agar pengguna bisa edit manual
-        }
-
-        async function loadManagerData() {
+        async function loadDashboardData() {
+            showNotification('Memuat data terbaru...', 'info');
             try {
-                showLoading(true);
-                updateConnectionStatus('connecting');
-                
-                const response = await fetch(`${APPS_SCRIPT_URL}?action=get_manager_data`);
-                
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-                
-                const data = await response.json();
-                
-                if (data.success) {
-                    allData = data.data;
-                    allData.sales.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)); // Sort sales descending
-                    applyFilters();
-                    updateConnectionStatus('online');
-                    updateLastUpdate();
-                    showLoading(false);
+                const response = await fetch(`${GAS_URL}?action=getManagerDashboard`);
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    populateDashboard(result.data);
+                    showNotification('Data berhasil dimuat', 'success');
                 } else {
-                    throw new Error(data.error || 'Failed to load data');
+                    throw new Error(result.message || 'Unknown error from server');
                 }
             } catch (error) {
-                console.error('Error loading data:', error);
-                updateConnectionStatus('offline');
-                showError('Gagal memuat data. Periksa koneksi dan URL Apps Script.');
-                showLoading(false, true);
+                showNotification(`Error: ${error.message}`, 'error');
             }
         }
-        
-        function applyFilters() {
-            const area = document.getElementById('areaFilter').value;
-            const date = document.getElementById('dateFilter').value;
-            const search = document.getElementById('transactionSearch').value.toLowerCase();
-            
-            let sales = allData.sales;
 
-            // Filter by area
-            if (area !== 'all') {
-                sales = sales.filter(s => s.area === area);
+        function populateDashboard(data) {
+            document.getElementById('presentCount').textContent = data.quickStats.presentCount;
+            document.getElementById('absentCount').textContent = data.quickStats.absentCount;
+            document.getElementById('lateCount').textContent = data.quickStats.lateCount;
+            document.getElementById('workingCount').textContent = data.quickStats.workingCount;
+
+            const tableBody = document.getElementById('attendanceTable');
+            tableBody.innerHTML = ''; 
+            if (!data.attendanceTable || data.attendanceTable.length === 0) {
+                 tableBody.innerHTML = '<tr><td colspan="7" class="text-center p-4 text-gray-500">Tidak ada jadwal hari ini.</td></tr>';
+            } else {
+                data.attendanceTable.forEach(emp => {
+                    const statusColorClass = emp.statusColor === 'online' ? 'status-online' : (emp.status === 'Menunggu' ? 'status-wait' : 'status-offline');
+                    let statusTextColor = 'text-gray-500'; // Default untuk Libur & Menunggu
+                    if(emp.status === "Sedang Kerja") statusTextColor = 'text-green-600';
+                    if(emp.status === "Tidak Hadir" || emp.status === "Sudah Pulang") statusTextColor = 'text-red-600';
+
+                    let jamMasukDisplay = emp.jamMasuk;
+                    if (emp.status.includes("Terlambat")) {
+                        jamMasukDisplay = `<span class="text-red-600 font-semibold">${emp.jamMasuk} (Terlambat)</span>`;
+                    }
+                    
+                    let fotoDisplay = `<div class="w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-white font-bold text-sm">${emp.foto}</div>`;
+                    if (emp.fotoProfil) {
+                        fotoDisplay = `<img src="${emp.fotoProfil}" alt="${emp.nama}" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200" onerror="this.outerHTML='<div class=\\'w-10 h-10 bg-gray-700 rounded-full flex items-center justify-center text-white font-bold text-sm\\'>${emp.foto}</div>'">`;
+                    }
+
+                    const row = `
+                        <tr class="border-b hover:bg-gray-50">
+                            <td class="p-3">${fotoDisplay}</td>
+                            <td class="p-3 font-medium">${emp.nama}</td>
+                            <td class="p-3"><span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">${emp.shift}</span></td>
+                            <td class="p-3">${jamMasukDisplay}</td>
+                            <td class="p-3 text-gray-500">${emp.jamKeluar}</td>
+                            <td class="p-3 text-gray-600">${emp.durasi}</td>
+                            <td class="p-3"><div class="flex items-center"><div class="w-2 h-2 rounded-full ${statusColorClass} mr-2"></div><span class="${statusTextColor} font-medium">${emp.status}</span></div></td>
+                        </tr>`;
+                    tableBody.innerHTML += row;
+                });
             }
 
-            // Filter by date
-            const now = new Date();
-            let startDate;
-            switch(date) {
-                case 'today': startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate()); break;
-                case 'week': startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); break;
-                case 'month': startDate = new Date(now.getFullYear(), now.getMonth(), 1); break;
+            const shiftContainer = document.getElementById('shiftOverviewContainer');
+            shiftContainer.innerHTML = '';
+            data.shiftOverview.forEach(shift => {
+                const percentage = shift.total > 0 ? (shift.present / shift.total) * 100 : 0;
+                const shiftEl = `
+                    <div class="border rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="font-medium">Shift ${shift.name}</span>
+                            <span class="text-sm text-gray-600">${shift.present}/${shift.total} karyawan</span>
+                        </div>
+                        <div class="w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-blue-600 h-2 rounded-full progress-bar" style="width: ${percentage}%"></div>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-1">${shift.total - shift.present} tidak hadir</p>
+                    </div>`;
+                shiftContainer.innerHTML += shiftEl;
+            });
+
+            const requestsContainer = document.getElementById('earlyLeaveRequests');
+            requestsContainer.innerHTML = '';
+            if (data.earlyLeaveRequests && data.earlyLeaveRequests.length > 0) {
+                document.getElementById('pendingCountBadge').textContent = `${data.earlyLeaveRequests.length} pending`;
+                document.getElementById('pendingCountBadge').classList.remove('hidden');
+
+                data.earlyLeaveRequests.forEach(req => {
+                    const reqEl = `<div class="border border-yellow-200 bg-yellow-50 rounded-lg p-4"><div class="flex justify-between items-start mb-2"><div><p class="font-medium text-gray-800">${req.nama}</p><p class="text-sm text-gray-600">Ingin pulang pukul ${req.waktu}</p></div><span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Pending</span></div><p class="text-sm text-gray-700 mb-3"><strong>Alasan:</strong> ${req.alasan}</p><div class="flex space-x-2"><button onclick="handleLeaveRequest('${req.requestId}', 'approve')" class="bg-green-600 text-white px-3 py-1 rounded text-xs hover:bg-green-700">✓ Setujui</button><button onclick="handleLeaveRequest('${req.requestId}', 'reject')" class="bg-red-600 text-white px-3 py-1 rounded text-xs hover:bg-red-700">✗ Tolak</button></div></div>`;
+                    requestsContainer.innerHTML += reqEl;
+                });
+            } else {
+                document.getElementById('pendingCountBadge').classList.add('hidden');
+                requestsContainer.innerHTML = '<p class="text-sm text-gray-500">Tidak ada permintaan izin pulang cepat.</p>';
             }
-            if (startDate) {
-                sales = sales.filter(s => s.timestamp && new Date(s.timestamp) >= startDate);
-            }
 
-            // Filter by search term
-            if (search) {
-                sales = sales.filter(s =>
-                    (s.items && s.items.toLowerCase().includes(search)) ||
-                    (s.area && s.area.toLowerCase().includes(search)) ||
-                    (s.method && s.method.toLowerCase().includes(search))
-                );
-            }
-            
-            filteredSales = sales;
-            currentPage = 1; // Reset to first page on filter change
-            updateDashboard();
-        }
-
-        function updateDashboard() {
-            updateSummaryCards();
-            updateSalesChart();
-            updateTopProducts();
-            updateLowStockAlerts();
-            updateExpiryAlerts(); // <-- BARU DITAMBAHKAN
-            updateTransactionHistory();
-            updateStockTable();
-            updateDamageReports();
-        }
-
-        function updateSummaryCards() {
-            const totalRevenue = filteredSales.reduce((sum, sale) => sum + (sale.total || 0), 0);
-            const totalTransactions = filteredSales.length;
-
-            const productSales = {};
-            filteredSales.forEach(sale => {
-                if (sale.items) {
-                    const items = sale.items.split(',');
-                    items.forEach(item => {
-                        const match = item.trim().match(/^(.+?)\s+x(\d+)$/);
-                        if (match) {
-                            const productName = match[1].trim();
-                            const quantity = parseInt(match[2]);
-                            productSales[productName] = (productSales[productName] || 0) + quantity;
-                        }
+            const weeklyTableBody = document.getElementById('weeklyReportTable');
+            weeklyTableBody.innerHTML = '';
+            if (data.weeklyReport && data.weeklyReport.length > 0) {
+                data.weeklyReport.forEach(report => {
+                    let daysHtml = '';
+                    report.days.forEach(status => {
+                        let icon = '-';
+                        if (status === 'Hadir') icon = '✅';
+                        if (status === 'Terlambat') icon = '⚠️';
+                        if (status === 'Tidak Hadir') icon = '🔴';
+                        daysHtml += `<td class="p-3 text-center">${icon}</td>`;
                     });
-                }
-            });
-            
-            const topProduct = Object.keys(productSales).length > 0 ? 
-                Object.keys(productSales).reduce((a, b) => productSales[a] > productSales[b] ? a : b) : '-';
-
-            document.getElementById('totalRevenue').textContent = `Rp ${totalRevenue.toLocaleString('id-ID')}`;
-            document.getElementById('totalTransactions').textContent = totalTransactions;
-            document.getElementById('topProduct').textContent = topProduct;
-            document.getElementById('topProductSales').textContent = `${productSales[topProduct] || 0} terjual`;
-        }
-
-        function updateSalesChart() {
-            const salesByArea = { 'adamart 73': 0, 'adamart induksi': 0, 'adamart kelanis': 0 };
-            const transByArea = { 'adamart 73': 0, 'adamart induksi': 0, 'adamart kelanis': 0 };
-            
-            filteredSales.forEach(sale => {
-                if (sale.area && sale.total) {
-                    salesByArea[sale.area] = (salesByArea[sale.area] || 0) + sale.total;
-                    transByArea[sale.area] = (transByArea[sale.area] || 0) + 1;
-                }
-            });
-
-            const maxSales = Math.max(1, ...Object.values(salesByArea));
-
-            document.getElementById('chart73').style.width = `${(salesByArea['adamart 73'] / maxSales) * 100}%`;
-            document.getElementById('sales73').textContent = `Rp ${salesByArea['adamart 73'].toLocaleString('id-ID')}`;
-            document.getElementById('transactions73').textContent = `${transByArea['adamart 73']} transaksi`;
-            
-            document.getElementById('chartInduksi').style.width = `${(salesByArea['adamart induksi'] / maxSales) * 100}%`;
-            document.getElementById('salesInduksi').textContent = `Rp ${salesByArea['adamart induksi'].toLocaleString('id-ID')}`;
-            document.getElementById('transactionsInduksi').textContent = `${transByArea['adamart induksi']} transaksi`;
-            
-            document.getElementById('chartKelanis').style.width = `${(salesByArea['adamart kelanis'] / maxSales) * 100}%`;
-            document.getElementById('salesKelanis').textContent = `Rp ${salesByArea['adamart kelanis'].toLocaleString('id-ID')}`;
-            document.getElementById('transactionsKelanis').textContent = `${transByArea['adamart kelanis']} transaksi`;
+                    const row = `
+                        <tr class="border-b">
+                            <td class="p-3 font-medium">${report.nama}</td>
+                            ${daysHtml}
+                            <td class="p-3 text-center font-semibold">${report.totalJam}</td>
+                        </tr>`;
+                    weeklyTableBody.innerHTML += row;
+                });
+            } else {
+                weeklyTableBody.innerHTML = '<tr><td colspan="9" class="text-center p-4 text-gray-500">Laporan mingguan tidak tersedia.</td></tr>';
+            }
         }
         
-        function updateTopProducts() {
-            const areas = ['adamart 73', 'adamart induksi', 'adamart kelanis'];
-            areas.forEach(area => {
-                const areaSales = filteredSales.filter(s => s.area === area);
-                const productSales = {};
-                areaSales.forEach(sale => {
-                    if (sale.items) {
-                        sale.items.split(',').forEach(item => {
-                             const match = item.trim().match(/^(.+?)\s+x(\d+)$/);
-                             if(match) {
-                                  productSales[match[1].trim()] = (productSales[match[1].trim()] || 0) + parseInt(match[2]);
-                             }
+        async function postToServer(payload) {
+             try {
+                let response = await fetch(GAS_URL, {
+                    method: 'POST', mode: 'no-cors',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                return { status: 'success' };
+            } catch (error) {
+                console.error('Error posting:', error);
+                return { status: 'error', message: error.message };
+            }
+        }
+
+        async function handleLeaveRequest(requestId, actionType) {
+            let action = actionType === 'approve' ? 'approveLeave' : 'rejectLeave';
+            let message = actionType === 'approve' ? 'Menyetujui permintaan...' : 'Menolak permintaan...';
+            
+            showNotification(message, 'info');
+            let result = await postToServer({ action: action, requestId: requestId });
+            
+            if (result.status === 'success') {
+                let successTitle = actionType === 'approve' ? 'Permintaan Disetujui!' : 'Permintaan Ditolak!';
+                showSuccessModal(successTitle, `Aksi telah berhasil dicatat.`);
+                loadDashboardData(); 
+            } else {
+                showNotification(`Error: ${result.message}`, 'error');
+            }
+        }
+        
+        async function sendAnnouncement(event) {
+            event.preventDefault();
+            let title = document.getElementById('announcementTitle').value;
+            let message = document.getElementById('announcementMessage').value;
+            let target = document.getElementById('announcementTarget').value;
+
+            if (title && message) {
+                closeAnnouncementModal();
+                showNotification('Mengirim pengumuman...', 'info');
+                let result = await postToServer({ action: 'sendAnnouncement', title, message, target });
+                if (result.status === 'success') {
+                    showSuccessModal('Pengumuman Terkirim!', `Pengumuman "${title}" berhasil dikirim.`);
+                } else {
+                    showNotification(`Error: ${result.message}`, 'error');
+                }
+            }
+        }
+        
+        // --- FUNGSI BARU: PROFIL KARYAWAN ---
+        async function loadEmployeeProfiles() {
+            const profilList = document.getElementById('profil-list');
+            profilList.innerHTML = '<p class="col-span-full text-gray-500">Memuat profil...</p>';
+            try {
+                const response = await fetch(`${GAS_URL}?action=getAllEmployeeProfiles`);
+                const result = await response.json();
+                if (result.status === 'success') {
+                    profilList.innerHTML = '';
+                    if (result.data.length === 0) {
+                        profilList.innerHTML = '<p class="col-span-full text-gray-500">Tidak ada karyawan ditemukan.</p>';
+                        return;
+                    }
+                    result.data.forEach(k => {
+                        profilList.innerHTML += `
+                            <div class="bg-white rounded-lg card-shadow p-6">
+                                <div class="flex items-center space-x-4">
+                                    <img src="${k.Foto_URL || ''}" alt="${k.Nama_Lengkap}" class="w-20 h-20 rounded-full object-cover border-4 border-gray-200" onerror="this.outerHTML='<div class=\\'w-20 h-20 bg-gray-700 rounded-full flex items-center justify-center text-white font-bold text-2xl\\'>${k.Foto_Inisial}</div>'">
+                                    <div>
+                                        <h4 class="text-lg font-bold text-gray-800">${k.Nama_Lengkap}</h4>
+                                        <p class="text-sm text-gray-600">${k.Posisi}</p>
+                                    </div>
+                                </div>
+                                <div class="mt-4 border-t pt-4 space-y-2 text-sm">
+                                    <p><strong>ID:</strong> ${k.ID_Karyawan || '-'}</p>
+                                    <p><strong>Tgl. Lahir:</strong> ${k.Tanggal_Lahir || '-'}</p>
+                                    <p><strong>Status:</strong> ${k.Status_Pernikahan || '-'}</p>
+                                    <p><strong>No. WA:</strong> ${k.No_Whatsapp || '-'}</p>
+                                    <p><strong>Alamat:</strong> ${k.Alamat || '-'}</p>
+                                    <p><strong>Kontak Darurat:</strong> ${k.Kontak_Darurat || '-'}</p>
+                                </div>
+                            </div>
+                        `;
+                    });
+                } else {
+                    throw new Error(result.message);
+                }
+            } catch (error) {
+                profilList.innerHTML = `<p class="col-span-full text-red-500">Error: ${error.message}</p>`;
+            }
+        }
+
+        // --- FUNGSI BARU: MANAJEMEN ROSTER ---
+        function setupRosterControls() {
+            const monthSelect = document.getElementById('roster-month');
+            const yearSelect = document.getElementById('roster-year');
+            const now = new Date();
+            const currentMonth = now.getMonth() + 1;
+            const currentYear = now.getFullYear();
+            
+            const months = ["Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+            months.forEach((month, index) => {
+                const value = index + 1;
+                monthSelect.innerHTML += `<option value="${value}" ${value === currentMonth ? 'selected' : ''}>${month}</option>`;
+            });
+            
+            for (let year = currentYear - 1; year <= currentYear + 1; year++) {
+                yearSelect.innerHTML += `<option value="${year}" ${year === currentYear ? 'selected' : ''}>${year}</option>`;
+            }
+        }
+
+        function getDaysInMonth(month, year) {
+            return new Date(year, month, 0).getDate();
+        }
+
+        async function loadRosterEditor() {
+            const month = document.getElementById('roster-month').value;
+            const year = document.getElementById('roster-year').value;
+            const container = document.getElementById('roster-editor-container');
+            container.innerHTML = '<p class="text-center text-gray-500">Memuat editor roster...</p>';
+
+            try {
+                // 1. Ambil semua karyawan
+                const empResponse = await fetch(`${GAS_URL}?action=getEmployeeList`);
+                const empResult = await empResponse.json();
+                if (empResult.status !== 'success') throw new Error(empResult.message);
+                const employees = empResult.data;
+
+                // 2. Ambil jadwal yang sudah ada
+                const rosterResponse = await fetch(`${GAS_URL}?action=getMonthlyRoster&month=${month}&year=${year}`);
+                const rosterResult = await rosterResponse.json();
+                if (rosterResult.status !== 'success') throw new Error(rosterResult.message);
+                const schedules = rosterResult.data.schedules; // Ambil jadwal yang ada
+                
+                // 3. Buat tabel editor
+                const daysInMonth = getDaysInMonth(month, year);
+                let tableHtml = '<table id="roster-editor-table" class="w-full text-sm"><thead><tr><th>Karyawan</th>';
+                
+                // Buat header tanggal
+                for (let day = 1; day <= daysInMonth; day++) {
+                    tableHtml += `<th>${day}</th>`;
+                }
+                tableHtml += '</tr></thead><tbody>';
+
+                // Buat baris untuk setiap karyawan
+                employees.forEach(emp => {
+                    tableHtml += `<tr data-employee-id="${emp.id}"><td>${emp.nama}</td>`;
+                    for (let day = 1; day <= daysInMonth; day++) {
+                        const dateString = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+                        
+                        // Cari jadwal yang ada untuk karyawan dan tanggal ini
+                        const schedule = schedules.find(s => s.tanggal === dateString && s.nama === emp.nama);
+                        const currentShift = schedule ? schedule.shift.split(' ')[0] : "Libur";
+                        
+                        let optionsHtml = '';
+                        SHIFT_TYPES.forEach(shift => {
+                            optionsHtml += `<option value="${shift}" ${shift === currentShift ? 'selected' : ''}>${shift}</option>`;
+                        });
+
+                        tableHtml += `<td><select data-date="${dateString}">${optionsHtml}</select></td>`;
+                    }
+                    tableHtml += '</tr>';
+                });
+
+                tableHtml += '</tbody></table>';
+                container.innerHTML = tableHtml;
+
+            } catch (error) {
+                container.innerHTML = `<p class="text-center text-red-500">Error: ${error.message}</p>`;
+            }
+        }
+
+        async function saveRoster() {
+            showNotification('Menyimpan roster...', 'info');
+            const month = document.getElementById('roster-month').value;
+            const year = document.getElementById('roster-year').value;
+            const table = document.getElementById('roster-editor-table');
+            if (!table) {
+                showNotification('Muat roster terlebih dahulu sebelum menyimpan.', 'error');
+                return;
+            }
+
+            const rosterData = [];
+            const rows = table.querySelectorAll('tbody tr');
+            
+            rows.forEach(row => {
+                const employeeId = row.dataset.employeeId;
+                const selects = row.querySelectorAll('select');
+                
+                selects.forEach(select => {
+                    const shiftName = select.value;
+                    const date = select.dataset.date;
+                    
+                    // Hanya simpan jika shift bukan "Libur"
+                    if (shiftName !== "Libur") {
+                        rosterData.push({
+                            employeeId: employeeId,
+                            date: date,
+                            shiftName: shiftName
                         });
                     }
                 });
-                
-                const sortedProducts = Object.entries(productSales).sort(([,a],[,b]) => b - a).slice(0, 3);
-                
-                const areaPart = area.split(' ')[1];
-                const containerId = `topProducts${areaPart.charAt(0).toUpperCase() + areaPart.slice(1)}`;
-                const container = document.getElementById(containerId);
-                
-                if (sortedProducts.length === 0) {
-                    container.innerHTML = '<p class="text-gray-500 text-sm">Tidak ada data</p>';
-                } else {
-                    container.innerHTML = sortedProducts.map(([name, qty], i) => `
-                        <div class="flex items-center justify-between p-2 bg-white rounded border-l-4 ${i === 0 ? 'border-yellow-400' : i === 1 ? 'border-gray-400' : 'border-orange-400'}">
-                            <span class="text-sm font-medium">${name}</span>
-                            <span class="text-xs bg-gray-100 px-2 py-1 rounded-full font-medium">${qty}</span>
-                        </div>
-                    `).join('');
-                }
             });
-        }
-        
-        function updateLowStockAlerts() {
-            const areas = ['adamart 73', 'adamart induksi', 'adamart kelanis'];
-            areas.forEach(area => {
-                const stockKey = `Stok Area Kasir ${area}`;
-                const lowStockProducts = allData.products.filter(p => (p[stockKey] || 0) < 10 && (p[stockKey] || 0) > 0);
-                
-                const areaPart = area.split(' ')[1];
-                const containerId = `lowStock${areaPart.charAt(0).toUpperCase() + areaPart.slice(1)}`;
-                const container = document.getElementById(containerId);
-                
-                if (lowStockProducts.length === 0) {
-                    container.innerHTML = '<p class="text-gray-500 text-sm">Semua stok aman ✅</p>';
-                } else {
-                     container.innerHTML = lowStockProducts.map(p => `
-                        <div class="flex items-center justify-between bg-white p-2 rounded border-l-4 border-red-500">
-                            <span class="text-sm font-medium">${p['Nama Produk']}</span>
-                            <span class="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full font-bold">${p[stockKey]}</span>
-                        </div>
-                    `).join('');
-                }
-            });
-        }
 
-        // FUNGSI BARU: Untuk menampilkan peringatan produk akan expired
-        function updateExpiryAlerts() {
-            const container = document.getElementById('expiryAlerts');
-            if (!allData.products) {
-                container.innerHTML = '<p class="text-gray-500 text-sm">Data produk tidak ditemukan.</p>';
-                return;
-            }
-
-            const now = new Date();
-            const twoMonthsLater = new Date(now.getTime() + (60 * 24 * 60 * 60 * 1000)); // 60 hari
-
-            // Asumsi: allData.products memiliki kolom 'ExpiryDate' (format 'YYYY-MM-DD')
-            // yang diisi oleh Apps Script sebagai tanggal expired *paling cepat* dari produk tsb.
-            const expiringProducts = allData.products.filter(p => {
-                if (!p.ExpiryDate) return false; // Pastikan ada data expiry
-                
-                const expiry = new Date(p.ExpiryDate);
-                // Cek jika tanggalnya valid, dan berada di antara sekarang s/d 60 hari ke depan
-                return !isNaN(expiry) && expiry >= now && expiry <= twoMonthsLater;
-            });
-            
-            // Urutkan berdasarkan yang paling cepat expired
-            expiringProducts.sort((a, b) => new Date(a.ExpiryDate) - new Date(b.ExpiryDate));
-
-            if (expiringProducts.length === 0) {
-                container.innerHTML = '<p class="text-gray-500 text-sm">Tidak ada produk yang akan expired dalam 2 bulan ✅</p>';
-            } else {
-                container.innerHTML = expiringProducts.map(p => {
-                    // Hitung total stok dari produk ini
-                    const s73 = p['Stok Area Kasir adamart 73'] || 0;
-                    const sInduksi = p['Stok Area Kasir adamart induksi'] || 0;
-                    const sKelanis = p['Stok Area Kasir adamart kelanis'] || 0;
-                    const totalStock = s73 + sInduksi + sKelanis;
-                    
-                    const expiry = new Date(p.ExpiryDate);
-                    const today = new Date();
-                    today.setHours(0,0,0,0); // reset time
-                    
-                    // Salin tanggal expiry dan reset jamnya untuk perbandingan hari
-                    const expiryDay = new Date(expiry.getFullYear(), expiry.getMonth(), expiry.getDate());
-                    
-                    const diffTime = Math.abs(expiryDay - today);
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    
-                    // BARU: Menambahkan ${p.ExpiryArea}
-                    return `
-                        <div class="flex items-center justify-between bg-white p-2 rounded border-l-4 border-yellow-500">
-                            <div>
-                                <span class="text-sm font-medium">${p['Nama Produk']}</span>
-                                <span class="text-xs text-gray-500 block">Total Stok: ${totalStock}</span>
-                                <!-- BARIS DI BAWAH INI BARU -->
-                                <span class="text-xs text-adamart-700 font-medium block">Area: ${p.ExpiryArea || 'N/A'}</span>
-                            </div>
-                            <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full font-bold">
-                                ${diffDays} hari lagi (${expiry.toLocaleDateString('id-ID')})
-                            </span>
-                        </div>
-                    `;
-                }).join('');
-            }
-        }
-        
-        function updateTransactionHistory() {
-            const tbody = document.getElementById('transactionHistory');
-            const totalCount = filteredSales.length;
-            const start = (currentPage - 1) * TRANSACTIONS_PER_PAGE;
-            const end = start + TRANSACTIONS_PER_PAGE;
-            const paginatedSales = filteredSales.slice(start, end);
-
-            if (paginatedSales.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" class="p-8 text-center text-gray-500">Tidak ada data transaksi</td></tr>';
-            } else {
-                tbody.innerHTML = paginatedSales.map(sale => `
-                    <tr class="border-b hover:bg-gray-50 transition-colors">
-                        <td class="p-3">
-                            <div class="text-sm font-medium">${sale.timestamp ? new Date(sale.timestamp).toLocaleDateString('id-ID') : '-'}</div>
-                            <div class="text-xs text-gray-500">${sale.timestamp ? new Date(sale.timestamp).toLocaleTimeString('id-ID') : '-'}</div>
-                        </td>
-                        <td class="p-3">${sale.area || '-'}</td>
-                        <td class="p-3"><div class="text-sm max-w-xs truncate" title="${sale.items || '-'}">${sale.items || '-'}</div></td>
-                        <td class="p-3 font-medium">Rp ${(sale.total || 0).toLocaleString('id-ID')}</td>
-                        <td class="p-3">${sale.method || '-'}</td>
-                    </tr>
-                `).join('');
-            }
-            
-            document.getElementById('transactionCount').textContent = paginatedSales.length > 0 ? `${start + 1}-${Math.min(end, totalCount)}` : '0';
-            document.getElementById('totalTransactionCount').textContent = totalCount;
-            updatePaginationControls(totalCount);
-        }
-        
-        function updatePaginationControls(totalCount) {
-            const pageCount = Math.ceil(totalCount / TRANSACTIONS_PER_PAGE);
-            const controls = document.getElementById('paginationControls');
-            controls.innerHTML = '';
-            
-            const prevButton = document.createElement('button');
-            prevButton.textContent = '‹';
-            prevButton.className = 'px-3 py-1 border rounded bg-white hover:bg-gray-100 disabled:opacity-50';
-            prevButton.disabled = currentPage === 1;
-            prevButton.onclick = () => { if(currentPage > 1) { currentPage--; updateTransactionHistory(); } };
-            controls.appendChild(prevButton);
-            
-            const pageInfo = document.createElement('span');
-            pageInfo.textContent = `Hal ${currentPage} dari ${pageCount || 1}`;
-            pageInfo.className = 'text-sm px-2';
-            controls.appendChild(pageInfo);
-
-            const nextButton = document.createElement('button');
-            nextButton.textContent = '›';
-            nextButton.className = 'px-3 py-1 border rounded bg-white hover:bg-gray-100 disabled:opacity-50';
-            nextButton.disabled = currentPage >= pageCount;
-            nextButton.onclick = () => { if(currentPage < pageCount) { currentPage++; updateTransactionHistory(); } };
-            controls.appendChild(nextButton);
-        }
-
-        function updateStockTable() {
-            const tbody = document.getElementById('stockTable');
-            const search = document.getElementById('stockSearch').value.toLowerCase();
-            
-            let products = allData.products;
-            if(search) {
-                products = products.filter(p => 
-                    (p['Nama Produk'] && p['Nama Produk'].toLowerCase().includes(search)) ||
-                    (p['Barcode'] && p['Barcode'].toLowerCase().includes(search))
-                );
-            }
-            
-            if (products.length === 0) {
-                // BARU: colspan diubah dari 7 menjadi 8
-                tbody.innerHTML = '<tr><td colspan="8" class="p-8 text-center text-gray-500">Tidak ada data stok</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = products.map(p => {
-                const s73 = p['Stok Area Kasir adamart 73'] || 0;
-                const sInduksi = p['Stok Area Kasir adamart induksi'] || 0;
-                const sKelanis = p['Stok Area Kasir adamart kelanis'] || 0;
-                const total = s73 + sInduksi + sKelanis;
-                
-                // BARU: Logika status yang direvisi untuk 3 kondisi
-                let statusText = 'Aman';
-                let statusClass = 'bg-green-100 text-green-800'; // Default: Aman
-
-                if (total === 0) {
-                    statusText = 'Kosong';
-                    statusClass = 'bg-gray-200 text-gray-700'; // Status Kosong
-                } else if (total < 10) {
-                    statusText = 'Menipis';
-                    statusClass = 'bg-red-100 text-red-800'; // Status Menipis
-                }
-                
-                // BARU: Logika untuk memformat tanggal expired
-                let expiryText = '<span class="text-gray-400">-</span>';
-                if (p.ExpiryDate) {
-                    const expiry = new Date(p.ExpiryDate);
-                    const today = new Date();
-                    today.setHours(0,0,0,0);
-                    
-                    // Salin tanggal expiry dan reset jamnya untuk perbandingan hari
-                    const expiryDay = new Date(expiry.getFullYear(), expiry.getMonth(), expiry.getDate());
-                    
-                    const diffTime = expiryDay - today; // Hitung selisih
-                    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    
-                    let colorClass = 'text-gray-700'; // Default
-                    if (diffDays <= 60) colorClass = 'text-yellow-700 font-medium'; // Mendekati
-                    if (diffDays <= 30) colorClass = 'text-red-700 font-bold'; // Mendesak
-                    if (diffDays <= 0) colorClass = 'text-red-900 font-extrabold line-through'; // Sudah Lewat
-
-                    expiryText = `<span class="${colorClass}">${expiry.toLocaleDateString('id-ID')}</span>`;
-                }
-
-                return `
-                    <tr class="border-b hover:bg-gray-50 transition-colors">
-                        <td class="p-3"><div class="font-medium">${p['Nama Produk']}</div><div class="text-xs text-gray-500">${p['Barcode']}</div></td>
-                        <td class="p-3">Rp ${(p['Harga'] || 0).toLocaleString('id-ID')}</td>
-                        <td class="p-3">${s73}</td>
-                        <td class="p-3">${sInduksi}</td>
-                        <td class="p-3">${sKelanis}</td>
-                        <td class="p-3 font-bold">${total}</td>
-                        <!-- BARU: Logika status telah diperbarui -->
-                        <td class="p-3"><span class="px-2 py-1 ${statusClass} text-xs font-medium rounded-full">${statusText}</span></td>
-                        <!-- BARU: Menampilkan data tanggal expired -->
-                        <td class="p-3 text-sm">${expiryText}</td>
-                    </tr>
-                `
-            }).join('');
-        }
-        
-        function updateDamageReports() {
-            const tbody = document.getElementById('damageReports');
-            if (!allData.reports || allData.reports.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-gray-500">Tidak ada laporan</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = allData.reports.map(r => {
-                const product = allData.products.find(p => p['Barcode'] === r.barcode);
-                const loss = product ? (product['Harga'] || 0) * (r.quantity || 0) : 0;
-                return `
-                    <tr class="border-b hover:bg-gray-50 transition-colors">
-                        <td class="p-3">${new Date(r.timestamp).toLocaleString('id-ID')}</td>
-                        <td class="p-3">${r.name}</td>
-                        <td class="p-3">${r.quantity}</td>
-                        <td class="p-3">${r.reason}</td>
-                        <td class="p-3">${r.area}</td>
-                        <td class="p-3 text-red-600 font-medium">Rp ${loss.toLocaleString('id-ID')}</td>
-                    </tr>
-                `;
-            }).join('');
-        }
-        
-        async function handleStockFormSubmit(e) {
-            e.preventDefault();
-            const formData = {
-                barcode: document.getElementById('barcode').value.trim(),
-                name: document.getElementById('productName').value.trim(),
-                price: parseInt(document.getElementById('price').value) || 0,
-                area: document.getElementById('targetArea').value,
-                quantity: parseInt(document.getElementById('stockAmount').value) || 0,
-                expiryDate: document.getElementById('expiryDate').value // BARU
-            };
-
-            // BARU: Menambahkan validasi untuk expiryDate
-            if (!formData.barcode || !formData.name || !formData.area || formData.quantity <= 0 || !formData.expiryDate) {
-                showError('Mohon lengkapi semua field dengan benar (termasuk tanggal expired)');
-                return;
-            }
-
+            // Kirim data ke backend
             try {
-                const response = await fetch(APPS_SCRIPT_URL, {
-                    method: 'POST',
-                    body: JSON.stringify({action: 'update_stock', data: formData})
+                const result = await postToServer({
+                    action: 'saveRoster',
+                    month: month,
+                    year: year,
+                    rosterData: rosterData
                 });
-                const result = await response.json();
-                if (result.success) {
-                    showSuccess('Stok berhasil diupdate!');
-                    document.getElementById('stockForm').reset(); // Menggunakan reset() bawaan form
-                    loadManagerData();
+                
+                if (result.status === 'success') {
+                    showSuccessModal('Roster Disimpan!', `Roster untuk bulan ${month}/${year} telah berhasil diperbarui.`);
                 } else {
-                    throw new Error(result.error || 'Gagal update stok');
+                    throw new Error(result.message);
                 }
             } catch (error) {
-                console.error('Error updating stock:', error);
-                showError('Gagal menambah stok. Periksa koneksi.');
+                showNotification(`Error: ${error.message}`, 'error');
             }
         }
-        
-        function exportTransactions() {
-            if (filteredSales.length === 0) {
-                showError('Tidak ada data untuk diekspor');
-                return;
-            }
-            const csvContent = "data:text/csv;charset=utf-8," 
-                + "Waktu,Area,Items,Total,Metode\n"
-                + filteredSales.map(s => `"${new Date(s.timestamp).toLocaleString('id-ID')}","${s.area}","${s.items.replace(/"/g, '""')}","${s.total}","${s.method}"`).join("\n");
-            
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `adamart_transaksi_${new Date().toISOString().split('T')[0]}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+
+
+        // --- FUNGSI UTILITAS MODAL & NOTIFIKASI ---
+        function showAnnouncementModal() { document.getElementById('announcementModal').classList.remove('hidden'); }
+        function closeAnnouncementModal() { document.getElementById('announcementModal').classList.add('hidden'); document.getElementById('announcementTitle').value = ''; document.getElementById('announcementMessage').value = '';}
+        function showSuccessModal(title, message) { document.getElementById('successTitle').textContent = title; document.getElementById('successMessage').textContent = message; document.getElementById('successModal').classList.remove('hidden'); }
+        function closeSuccessModal() { document.getElementById('successModal').classList.add('hidden'); }
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `fixed top-4 right-4 p-4 rounded-lg text-white z-50 notification-slide ${type === 'error' ? 'bg-red-500' : 'bg-green-500'}`;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => { notification.remove(); }, 3000);
         }
 
-        function refreshData() {
-            const icon = document.getElementById('refreshIcon');
-            icon.classList.add('animate-spin');
-            loadManagerData().finally(() => {
-                icon.classList.remove('animate-spin');
-            });
-        }
-        
-        function showLoading(show, error = false) {
-            document.getElementById('loadingState').classList.toggle('hidden', !show || error);
-            document.getElementById('errorState').classList.toggle('hidden', !error);
-            document.getElementById('dashboardContent').classList.toggle('hidden', show || error);
-        }
-
-        function updateConnectionStatus(status) {
-            const el = document.getElementById('connectionStatus');
-            if(status === 'online') { el.innerHTML = '🟢 Online'; el.className = 'text-green-300'; }
-            else if(status === 'offline') { el.innerHTML = '🔴 Offline'; el.className = 'text-red-300'; }
-            else { el.innerHTML = '🟡 Connecting...'; el.className = 'text-yellow-300'; }
-        }
-
-        function updateLastUpdate() {
-            document.getElementById('lastUpdate').textContent = `Update: ${new Date().toLocaleTimeString('id-ID')}`;
-        }
-
-        function showSuccess(message) {
-            document.getElementById('successMessage').textContent = message;
-            const toast = document.getElementById('successToast');
-            toast.classList.remove('hidden');
-            setTimeout(() => toast.classList.add('hidden'), 3000);
-        }
-
-        function showError(message) {
-            document.getElementById('errorMessage').textContent = message;
-            const toast = document.getElementById('errorToast');
-            toast.classList.remove('hidden');
-            setTimeout(() => toast.classList.add('hidden'), 4000);
-        }
+        // Inisialisasi Halaman
+        document.addEventListener('DOMContentLoaded', function() {
+            updateDateTime();
+            setInterval(updateDateTime, 1000);
+            loadDashboardData(); 
+            loadEmployeeProfiles();
+            setupRosterControls(); // Siapkan dropdown bulan & tahun
+        });
     </script>
 </body>
 </html>
