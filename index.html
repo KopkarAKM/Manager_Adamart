@@ -19,6 +19,24 @@
         .status-break { background-color: #f59e0b; }
         .chart-container { position: relative; height: 200px; }
         .progress-bar { transition: width 0.3s ease; }
+
+	/* Tambahkan ini untuk warna roster */
+        #roster-editor-table select.shift-pagi {
+            color: #DD6B20; /* Oranye */
+            font-weight: 600;
+        }
+        #roster-editor-table select.shift-siang {
+            color: #38A169; /* Hijau */
+            font-weight: 600;
+        }
+        #roster-editor-table select.shift-malam {
+            color: #000000; /* Hitam */
+            font-weight: 600;
+	}
+       #roster-editor-table select.shift-libur {
+            color: #ef4444; /* Merah - sama dengan warna status 'Tidak Hadir' */
+            font-weight: 600; /* Menambahkan ini agar tebal */
+        }
         
         /* Gaya untuk Roster Editor */
         #roster-editor-table th, #roster-editor-table td {
@@ -507,6 +525,23 @@
             }
         }
 
+	// --- FUNGSI BARU UNTUK MEWARNAI ROSTER ---
+        function updateRosterColor(selectElement) {
+            // Hapus semua kelas warna sebelumnya
+            selectElement.classList.remove('shift-pagi', 'shift-siang', 'shift-malam', 'shift-libur');
+            
+            // Tambahkan kelas baru berdasarkan nilai yang dipilih
+            const selectedValue = selectElement.value;
+            if (selectedValue === 'Pagi') {
+                selectElement.classList.add('shift-pagi');
+            } else if (selectedValue === 'Siang') {
+                selectElement.classList.add('shift-siang');
+            } else if (selectedValue === 'Malam') {
+                selectElement.classList.add('shift-malam');
+            } else { // Untuk "Libur"
+                selectElement.classList.add('shift-libur');
+            }
+        }
         // --- FUNGSI BARU: MANAJEMEN ROSTER ---
         function setupRosterControls() {
             const monthSelect = document.getElementById('roster-month');
@@ -569,12 +604,18 @@
                         const schedule = schedules.find(s => s.tanggal === dateString && s.nama === emp.nama);
                         const currentShift = schedule ? schedule.shift.split(' ')[0] : "Libur";
                         
+			// <-- PERUBAHAN 1: Tentukan kelas warna berdasarkan shift saat ini
+                        let colorClass = 'shift-libur'; // Default Libur
+                        if (currentShift === 'Pagi') colorClass = 'shift-pagi';
+                        else if (currentShift === 'Siang') colorClass = 'shift-siang';
+                        else if (currentShift === 'Malam') colorClass = 'shift-malam';
+
                         let optionsHtml = '';
                         SHIFT_TYPES.forEach(shift => {
                             optionsHtml += `<option value="${shift}" ${shift === currentShift ? 'selected' : ''}>${shift}</option>`;
                         });
 
-                        tableHtml += `<td><select data-date="${dateString}">${optionsHtml}</select></td>`;
+                        tableHtml += `<td><select data-date="${dateString}" class="${colorClass}" onchange="updateRosterColor(this)">${optionsHtml}</select></td>`;
                     }
                     tableHtml += '</tr>';
                 });
